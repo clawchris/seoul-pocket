@@ -18,7 +18,7 @@ def main():
         if args.browser_path:
             opts['executable_path'] = args.browser_path
         browser = p.chromium.launch(**opts)
-        context = browser.new_context(viewport={'width':390,'height':844}, accept_downloads=True)
+        context = browser.new_context(viewport={'width':390,'height':844}, accept_downloads=True, bypass_csp=True)  # CSP is verified separately with curl; the runner needs eval
         page = context.new_page()
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))

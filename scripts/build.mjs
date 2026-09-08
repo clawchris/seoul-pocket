@@ -5,7 +5,8 @@ const root=path.resolve(import.meta.dirname,'..'),pub=path.join(root,'public'),o
 async function files(dir){const entries=await readdir(dir,{withFileTypes:true});return (await Promise.all(entries.map(e=>e.isDirectory()?files(path.join(dir,e.name)):[path.join(dir,e.name)]))).flat();}
 await rm(out,{recursive:true,force:true});await mkdir(out,{recursive:true});await cp(pub,out,{recursive:true});
 const paths=(await files(out)).filter(p=>!path.basename(p).startsWith('_')).sort();
-const hash=createHash('sha256');for(const p of paths){hash.update(path.relative(out,p));hash.update(await readFile(p));}
+const hash=createHash('sha256');hash.update(await readFile(new URL(import.meta.url)));for(const p of paths){hash.update(path.relative(out,p));hash.update(await readFile(p));}
+// The build script (which embeds the worker template) is part of the hash so a worker-only change still produces a new cache version.
 const version=hash.digest('hex').slice(0,16),assets=paths.map(p=>'/'+path.relative(out,p).split(path.sep).join('/')).map(p=>p==='/index.html'?'/':p);
 // Cloudflare Pages answers /index.html with a 308 to /. A cached redirected response cannot satisfy a navigation
 // request (Chrome fails it with ERR_FAILED), so the shell is cached under '/' and stored without its redirect flag.
