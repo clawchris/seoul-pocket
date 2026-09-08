@@ -10,7 +10,7 @@ Read CODEX_START_HERE.md and docs/01 through docs/07 before changing architectur
 6. Enter PIN/Wi-Fi inside the app, not in the seed. An existing stay is never overwritten by a deployment or seed load. Address merge touches only address/coordinates and requires explicit encrypted save.
 7. Weather uses fixed APPROXIMATE district coordinates, not the exact stay/GPS. Keep model time, fetch time and stale/offline labels. Never turn a failed request or unknown rain chance into invented data. Preserve attribution and recheck non-commercial terms/rate limits.
 8. The predeparture checklist is self-reported, not certification. Never auto-complete it from cache presence. Do not restore device-specific confirmations as done on another phone.
-9. Do not scrape Naver/social networks or insert third-party tracking scripts. Keep manual entry, Korean address copy and external links as fallbacks.
+9. Do not scrape Naver, Kakao or social networks or insert third-party tracking scripts. Keep manual entry, Korean address copy and external links as fallbacks.
 10. Do not claim device speech is reliable offline audio. Keep the audio release gate until reviewed files and real device playback pass or the owner consciously accepts text-only scope.
 11. Never delete IndexedDB as an error-recovery shortcut. Preserve records on migration, failed sync or restore. Do not auto-activate worker updates during edits/secret interactions.
 12. The UI harness has deliberately fake adapters; never deploy it or use its results as storage, security, network or offline evidence.

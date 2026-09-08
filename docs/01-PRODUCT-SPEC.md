@@ -32,7 +32,7 @@ Today: local-area identity, four quick actions, compact weather, three-city live
 Saved: search; Everything/Food/Places/Must-try/Visited chips; cards; add; Near our stay and general Seoul ideas.
 Speak: search/category chips; Korean/English/phonetic cards; audio and show actions.
 Tools: currency at top; time/checklist/transit/help links; detailed district weather.
-Trip: encrypted stay; dates; backup/restore; preparation checklist; secondary offline/Naver/print controls; honest local-only status.
+Trip: encrypted stay; dates; backup/restore; preparation checklist; secondary offline/place-search/print controls; honest local-only status.
 
 ## Data and reliability
 Local writes must finish before success is shown. Existing data survives failed requests, rejected imports and updates. Plaintext accommodation details stay out of static assets; approximate locality is public. The owner ZIP/private folder must be protected separately. Saved finds/photos are not encrypted locally. A cache is not a backup and browser persistence is not an absolute guarantee [S10–S11].

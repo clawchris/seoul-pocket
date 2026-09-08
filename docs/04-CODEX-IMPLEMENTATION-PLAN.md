@@ -13,7 +13,7 @@ Use a supported Pages Git/Wrangler deployment that includes root functions/. Sta
 
 Weather: /api/weather is a public fixed-district GET with no client-provided coordinates or upstream URL. Verify live Open-Meteo response/schema/timezone, timeout handling, cache behavior, quotas and attribution. The free endpoint is for non-commercial use and has no uptime guarantee; re-evaluate for commercial/public-scale deployment [S37–S38]. Add platform abuse/rate limiting before exposing broadly. A 10-minute upstream cache hint is not a proven deployed hit ratio or abuse barrier.
 
-Rates: test real USD/KRW response, reference date, manual entry, offline use, malformed result and failed refresh. Naver: obtain valid server-side credentials for the selected API product, test Korean result/address/coordinate fields, native app handoff and browser fallback. Keep manual saving functional if Naver is unavailable [S5–S9,S15]. Do not store the development proxy token as a production shared-session system.
+Rates: test real USD/KRW response, reference date, manual entry, offline use, malformed result and failed refresh. Place search: the deployed proxy at /api/places calls Kakao Local keyword search with the KAKAO_REST_API_KEY secret (set 8 September 2026); verify a Korean query returns coordinates and that quota/failure paths degrade to manual entry. Keep manual saving functional if Kakao is unavailable [S5–S9,S15]. Do not store the development proxy token as a production shared-session system.
 
 Exit: live success and error evidence on actual staging URL. No integration is complete merely because mocked Node contract tests pass.
 
@@ -47,4 +47,4 @@ Desktop tests are useful but are not substitutes for this matrix. Test on each t
 Confirm travel dates, airport and entry procedure; validate the map pin with the host; complete the user's checklist through real actions. Export independent recovery copies. Freeze the tested version shortly before travel, record deployed URL/build hash/configuration and avoid unnecessary mid-trip changes. Unresolved audio or sharing must be a clearly accepted reduced scope, not described as finished.
 
 ## Inputs still unresolved
-Travel dates/terminal, exact unit and host entry instructions, real device versions, group editing requirement, Cloudflare account/domain and optional Naver API credentials. The supplied exact location is already configured privately. No other feature proposals are pending acceptance.
+Travel dates/terminal, exact unit and host entry instructions, real device versions, group editing requirement, Cloudflare account/domain and the Kakao REST API key. The supplied exact location is already configured privately. No other feature proposals are pending acceptance.

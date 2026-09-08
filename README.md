@@ -9,7 +9,7 @@ node --version                 # 22 or later
 npm run verify
 npm run preview                # http://localhost:4173
 ```
-No package installation is required for the application or Node tests. Use HTTP, not file://. Preview serves dist and returns controlled unavailable responses for APIs; it does not execute Pages Functions. For integration, use a separately installed, pinned Wrangler version and `wrangler pages dev dist`. Naver secrets belong in server-only configuration. See CODEX_START_HERE.md and docs/04.
+No package installation is required for the application or Node tests. Use HTTP, not file://. Preview serves dist and returns controlled unavailable responses for APIs; it does not execute Pages Functions. For integration, use a separately installed, pinned Wrangler version and `wrangler pages dev dist`. The Kakao REST API key belongs in server-only configuration. See CODEX_START_HERE.md and docs/04.
 
 ## Private setup: read before publishing
 This ZIP is a **private handoff**, not a public site bundle. On each phone use **Our stay → Load preconfigured stay** with the passphrase in `private/OWNER_SETUP.md`. The original exact English/Korean address and coordinates are in `private/stay-source.json`; they are not plaintext in public assets. Keep the setup passphrase in your password manager. It initially unlocks the local stay too; change it through Edit stay if desired.

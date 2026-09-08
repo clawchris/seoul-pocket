@@ -8,7 +8,7 @@ The local app uses semantic HTML, CSS and native JavaScript modules, without a r
 iPhone Home Screen app
   UI → domain validation → IndexedDB transaction → acknowledged local save
   ├─ static files and reviewed audio → versioned first-party CacheStorage
-  ├─ Naver/FX/weather request → same-origin Pages Function → fixed provider endpoint
+  ├─ Kakao/FX/weather request → same-origin Pages Function → fixed provider endpoint
   ├─ map/social link → external application or browser
   └─ future outbox → authorized sync Function → D1 / private R2
 ```
@@ -65,7 +65,7 @@ The preview server does not execute these Functions. Mocked-fetch tests check th
 
 Place search uses Kakao Local keyword search with the `KAKAO_REST_API_KEY` secret. Naver's search API was dropped on 8 September 2026 because NAVER API Hub requires a Naver Cloud Platform account the owner cannot open; Naver Maps deep links for directions remain and need no credentials. The temporary `API_ACCESS_TOKEN` is a high-entropy owner-managed development proxy token, entered into memory only and cleared on background. It is **not** production per-member authorization or a group-encryption key. Same-origin checks and comparison of token digests are supplied. No generic URL fetcher exists; upstream hosts are fixed. Search results are stripped of markup and rendered escaped [S5–S9].
 
-Rates use the fixed Frankfurter v2 endpoint with base USD and quote KRW, bounded timeout, validation and a dated local fallback [S15]. A rate reference has no payment-settlement guarantee. Provider failures do not erase an existing rate. Add abuse limiting to public rate refresh and authorized Naver search before opening production endpoints broadly.
+Rates use the fixed Frankfurter v2 endpoint with base USD and quote KRW, bounded timeout, validation and a dated local fallback [S15]. A rate reference has no payment-settlement guarantee. Provider failures do not erase an existing rate. Add abuse limiting to public rate refresh and authorized Kakao place search before opening production endpoints broadly.
 
 ## 8. Proposed group sharing: complete before enabling
 ### Membership and access
