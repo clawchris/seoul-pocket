@@ -2,9 +2,9 @@ let active=null;let pack;
 export async function audioManifest(){if(!pack)pack=await fetch('/audio/manifest.json').then(r=>r.json()).catch(()=>({reviewed:false,clips:{}}));return pack;}
 export function stopSpeech(){globalThis.speechSynthesis?.cancel();if(active){active.pause();active=null;}}
 export async function speakPhrase(phrase){
- stopSpeech();const m=await audioManifest(),file=m.reviewed?m.clips?.[phrase.id]:null;
+ stopSpeech();const m=await audioManifest(),file=(m.reviewed||m.generated)?m.clips?.[phrase.id]:null;
  if(file&&/^\/audio\/[a-zA-Z0-9_.-]+\.(mp3|m4a|wav|ogg)$/.test(file)){
-   active=new Audio(file);await active.play();return 'recording';
+   active=new Audio(file);await active.play();return m.reviewed?'recording':'generated';
  }
  if(!('speechSynthesis'in globalThis))throw new Error('Speech is unavailable. Use Show card, or add reviewed Korean recordings before the trip.');
  const voices=speechSynthesis.getVoices(),voice=voices.find(v=>v.lang.toLowerCase().startsWith('ko')&&v.localService)||voices.find(v=>v.lang.toLowerCase().startsWith('ko'));

@@ -1,0 +1,217 @@
+[
+ {
+  "id": "S01",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S02",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S05",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S10",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S11",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S12",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S14",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S15",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S20",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S21",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S22",
+  "result": "PASS",
+  "note": "HEIC message: Choose a JPEG, PNG, or WebP. For HEIC, export a JPEG or use a screenshot."
+ },
+ {
+  "id": "S23",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S24",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S25",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S27",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S29",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S26",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S30",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S31",
+  "result": "PASS",
+  "note": "Playing Korean device voice. Offline reliability still needs testing."
+ },
+ {
+  "id": "S32",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S40",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S41",
+  "result": "PASS",
+  "note": "$10.39"
+ },
+ {
+  "id": "S42",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S43",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S44",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S45",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S46",
+  "result": "FAIL",
+  "note": "Locator.inner_text: Timeout 30000ms exceeded. @line 250"
+ },
+ {
+  "id": "S51",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S52",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S53",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S54",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S55",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S56",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S50",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S57",
+  "result": "PASS",
+  "note": "seoul-pocket-backup-2026-09-08.json"
+ },
+ {
+  "id": "S58",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S59",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S60",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S28",
+  "result": "PASS",
+  "note": "송화양꼬치"
+ },
+ {
+  "id": "S61",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S80",
+  "result": "FAIL",
+  "note": "AssertionError @line 362"
+ },
+ {
+  "id": "S04",
+  "result": "PASS",
+  "note": ""
+ },
+ {
+  "id": "S03",
+  "result": "PASS",
+  "note": ""
+ }
+]

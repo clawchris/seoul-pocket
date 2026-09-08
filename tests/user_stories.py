@@ -8,14 +8,22 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
 RESULTS = []
+DEBUG_PAGE = None
 
 def story(sid, fn):
     try:
         note = fn() or ''
         RESULTS.append((sid, 'PASS', note)); print(f'PASS {sid} {note}', flush=True)
     except Exception as err:  # noqa
-        msg = str(err).splitlines()[0][:220]
-        RESULTS.append((sid, 'FAIL', msg)); print(f'FAIL {sid} {msg}', flush=True)
+        tb = traceback.extract_tb(err.__traceback__); where = next((f'line {f.lineno}' for f in reversed(tb) if f.filename.endswith('user_stories.py')), '')
+        msg = ((str(err).splitlines() or [type(err).__name__])[0][:220] + ' @' + where).strip()
+        try:
+            ctxinfo = DEBUG_PAGE.evaluate("()=>({sheet:document.querySelector('#sheet').open, title:document.querySelector('#sheet-title')?.innerText, cards:[...document.querySelectorAll('.place-card h3')].map(x=>x.innerText), toast:document.querySelector('#toast')?.innerText, tab:document.querySelector('#nav .active')?.innerText.trim()})") if DEBUG_PAGE else ''
+        except Exception as e2: ctxinfo = f'(no ctx: {e2})'
+        RESULTS.append((sid, 'FAIL', msg)); print(f'FAIL {sid} {msg} | {ctxinfo}', flush=True)
+        try:
+            if DEBUG_PAGE and DEBUG_PAGE.locator('#sheet').evaluate('s=>s.open'): DEBUG_PAGE.evaluate("document.querySelector('#sheet').close()")
+        except Exception: pass
 
 def main():
     ap = argparse.ArgumentParser()
@@ -35,6 +43,7 @@ def main():
         ctx = browser.new_context(viewport={'width':390,'height':844}, device_scale_factor=2, is_mobile=True, has_touch=True,
                                   accept_downloads=True, bypass_csp=True, permissions=['clipboard-read','clipboard-write'])
         page = ctx.new_page()
+        global DEBUG_PAGE; DEBUG_PAGE = page
         errors = []; dialogs = []
         page.on('pageerror', lambda e: errors.append(str(e)))
         page.on('dialog', lambda d: (dialogs.append(d.message), d.accept()))
@@ -151,7 +160,7 @@ def main():
             for f in ['food','place','must','visited','all']:
                 page.locator(f'[data-action=filter][data-filter={f}]').click(); page.wait_for_timeout(200); out[f] = page.locator('.place-card h3').all_inner_texts()
             assert out['food'] == ['Mandu'] and out['place'] == ['Gwangjang Market'] and out['visited'] == ['Mandu'] and len(out['must']) == 2 and len(out['all']) == 2, out
-            page.locator('#place-search').fill('bindae'); page.wait_for_timeout(200); assert page.locator('.place-card h3').all_inner_texts() == ['Gwangjang Market']
+            page.locator('#place-search').fill('EDITED'); page.wait_for_timeout(200); assert page.locator('.place-card h3').all_inner_texts() == ['Gwangjang Market']
             page.locator('#place-search').fill('zzz'); page.wait_for_timeout(200); assert 'No matches' in page.locator('.empty').inner_text()
             page.locator('#place-search').fill(''); page.wait_for_timeout(200)
         story('S25', s25)
@@ -205,6 +214,7 @@ def main():
             return page.locator('#convert-result').inner_text()
         story('S41', s41)
         def s42():
+            if not page.locator('[data-action=manual-rate]').is_visible(): page.locator('[data-converter] summary').click()
             act('manual-rate'); f = sheet.locator('form[data-form=rate]'); f.locator('[name=rate]').fill('-5'); f.locator('button[type=submit]').click(); page.wait_for_timeout(300)
             assert f.locator('.form-error').inner_text()
             f.locator('[name=rate]').fill('1400'); f.locator('button[type=submit]').click(); page.wait_for_timeout(500); assert not sheet.evaluate('s=>s.open')
@@ -234,7 +244,8 @@ def main():
         def s46():
             act('checklist'); assert sheet.locator('input[data-check-id]').count() == 12
             sheet.locator('[data-check-id=documents]').check(); page.wait_for_timeout(400)
-            assert '1/12' in sheet.locator('[data-check-progress]').inner_text()
+            assert sheet.evaluate('s=>s.open'), 'sheet closed after checking a box: ' + str(page.evaluate("document.querySelector('#toast')?.innerText"))
+            assert '1/12' in sheet.locator('[data-check-progress]').inner_text(timeout=3000)
             sheet.locator('.checklist-tool').first.click(); page.wait_for_timeout(300)
             assert sheet.locator('#sheet-title').inner_text() != 'Predeparture checklist'; close()
             page.reload(); page.wait_for_selector('#nav'); assert '1/12' in page.locator('[data-check-progress]').first.inner_text()
@@ -302,7 +313,7 @@ def main():
             tab('trip'); act('backup'); f = sheet.locator('form[data-form=backup]')
             f.locator('[name=passphrase]').fill('backup passphrase long enough'); f.locator('[name=confirm]').fill('backup passphrase long enough')
             with page.expect_download(timeout=15000) as dl: f.locator('button[type=submit]').click()
-            d = dl.value; path = d.path(); data = json.loads(Path(path).read_text()); assert d.suggested_filename.startswith('seoul-pocket-backup-') and data.get('alg') or 'ciphertext' in json.dumps(data)
+            d = dl.value; path = d.path(); data = json.loads(Path(path).read_text()); assert d.suggested_filename.startswith('seoul-pocket-backup-'), d.suggested_filename; assert 'AES-GCM' in json.dumps(data) and 'Gwangjang' not in json.dumps(data), list(data)[:6]
             page.evaluate("window.__backup=arguments") if False else None; close(); return d.suggested_filename
         story('S57', s57)
         backup_path = [None]
@@ -348,14 +359,14 @@ def main():
         story('S61', s61)
         # Offline
         def s80():
-            ctx.set_offline(True); page.reload(); page.wait_for_selector('#nav', timeout=15000)
-            assert 'Offline' in page.locator('#connection').inner_text()
+            ctx.set_offline(True); ctx.add_init_script("Object.defineProperty(navigator,'onLine',{get:()=>!window.__online,configurable:true});window.__online=false"); page.reload(); page.wait_for_selector('#nav', timeout=15000)
+            assert 'Offline' in page.locator('#connection').inner_text(), page.locator('#connection').inner_text()
             tab('saved'); assert page.locator('.place-card').count() >= 1 and page.locator('.place-thumb img').count() >= 1
             tab('speak'); assert page.locator('.phrase').count() == 28
             tab('tools'); page.locator('#convert-amount').fill('14000'); page.wait_for_timeout(200); assert page.locator('#convert-result').inner_text() == '$10.00'
             assert 'Last saved' in page.locator('[data-weather=detail]').inner_text() or 'Offline' in page.locator('[data-weather=detail]').inner_text()
             tab('trip'); act('stay'); f = sheet.locator('form[data-form=unlock]'); f.locator('[name=passphrase]').fill(pw); f.locator('button[type=submit]').click(); page.wait_for_timeout(1500); assert 'Unlocked' in sheet.inner_text(); close()
-            ctx.set_offline(False)
+            ctx.set_offline(False); page.evaluate('window.__online=true')
         story('S80', s80)
         def s04():
             ctx.set_offline(False); page.reload(); page.wait_for_selector('#nav')
