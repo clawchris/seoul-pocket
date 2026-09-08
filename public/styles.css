@@ -24,10 +24,10 @@ label{display:grid;gap:6px;font-size:13px;font-weight:650;margin:0 0 16px}input,
 #sheet{transition:transform var(--dur-sheet) var(--ease-drawer),opacity var(--dur-sheet) var(--ease-out),overlay var(--dur-sheet) allow-discrete,display var(--dur-sheet) allow-discrete}
 #sheet[open]{transform:translateY(0);opacity:1}
 @starting-style{#sheet[open]{transform:translateY(100%);opacity:1}}
-#sheet.closing{transform:translateY(100%);transition-duration:var(--dur-sheet-exit)}
+#sheet.closing,#sheet:not([open]){transform:translateY(100%);transition-duration:var(--dur-sheet-exit)}
 #sheet::backdrop{opacity:1;transition:opacity var(--dur-sheet) var(--ease-out),overlay var(--dur-sheet) allow-discrete,display var(--dur-sheet) allow-discrete}
 @starting-style{#sheet[open]::backdrop{opacity:0}}
-#sheet.closing::backdrop{opacity:0;transition-duration:var(--dur-sheet-exit)}
+#sheet.closing::backdrop,#sheet:not([open])::backdrop{opacity:0;transition-duration:var(--dur-sheet-exit)}
 @media(min-width:680px){@starting-style{#sheet[open]{transform:translateY(18px) scale(.985);opacity:0}}#sheet.closing{transform:translateY(18px) scale(.985);opacity:0}}
 .quick-card,.tool-link,.place-main,.primary,.secondary,.danger-button,.link-button,.icon-button,.text-button,.chip,.preset button,.currency-toggle,.world-clock-strip,.header-help,.emergency-grid a{transition:transform var(--dur-press) var(--ease-out),background-color var(--dur-ui) ease,color var(--dur-ui) ease}
 .quick-card:active,.tool-link:active,.primary:active,.secondary:active,.danger-button:active,.link-button:active,.icon-button:active,.text-button:active,.chip:active,.preset button:active,.currency-toggle:active,.world-clock-strip:active,.header-help:active,.emergency-grid a:active{transform:scale(.97)}

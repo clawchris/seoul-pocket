@@ -1,2 +1,2 @@
 import {json} from '../_lib/http.js';
-export async function onRequestGet(){return json({ok:true,service:'seoul-pocket',version:'0.1.0'});}
+export async function onRequestGet(){return json({ok:true,service:'seoul-pocket',version:'0.2.0'});}

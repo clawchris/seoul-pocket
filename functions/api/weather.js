@@ -1,4 +1,5 @@
 import {json} from '../_lib/http.js';
+const cached=(value)=>{const r=json(value);r.headers.set('Cache-Control','public, max-age=300');return r;};
 import {normalizeForecast,WEATHER_LOCATION} from '../../public/src/weather.js';
 /** Public fixed-area proxy. No user GPS, address, arbitrary URL, or credentials accepted. */
 export async function onRequestGet(){
@@ -7,6 +8,6 @@ export async function onRequestGet(){
  try{
   const response=await fetch(url,{signal:AbortSignal.timeout(4500),cf:{cacheTtl:600,cacheEverything:true}});
   if(!response.ok)throw new Error('Forecast provider unavailable');
-  return json(normalizeForecast(await response.json()));
+  return cached(normalizeForecast(await response.json()));
  }catch{return json({error:'Weather could not refresh. Your last saved forecast is unchanged.'},502);}
 }

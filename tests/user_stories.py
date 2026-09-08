@@ -368,9 +368,10 @@ def main():
         story('S61', s61)
         # Offline
         def s80():
-            ctx.set_offline(True); page.add_init_script("Object.defineProperty(navigator,'onLine',{get:()=>!window.__online,configurable:true});window.__online=false"); page.reload(); page.wait_for_selector('#nav', timeout=15000)
-            if page.evaluate('navigator.onLine'):
-                # Headless Chromium does not always flip navigator.onLine under network emulation; force it and fire the event the app listens for.
+            ctx.set_offline(True); page.reload(); page.wait_for_selector('#nav', timeout=15000)
+            browser_flipped = not page.evaluate('navigator.onLine')
+            if not browser_flipped:
+                # Headless Chromium does not flip navigator.onLine under network emulation. This exercises the app's offline handler only; the real network check is the fetch below.
                 page.evaluate("Object.defineProperty(navigator,'onLine',{get:()=>false,configurable:true});window.dispatchEvent(new Event('offline'))"); page.wait_for_timeout(200)
             assert 'Offline' in page.locator('#connection').inner_text(), page.locator('#connection').inner_text()
             assert page.evaluate("fetch('/api/health').then(()=>false).catch(()=>true)"), 'network must actually be offline'
@@ -379,10 +380,11 @@ def main():
             tab('tools'); page.locator('#convert-amount').fill('14000'); page.wait_for_timeout(200); assert page.locator('#convert-result').inner_text() == '$10.00'
             assert 'Last saved' in page.locator('[data-weather=detail]').inner_text() or 'Offline' in page.locator('[data-weather=detail]').inner_text()
             tab('trip'); act('stay'); f = sheet.locator('form[data-form=unlock]'); f.locator('[name=passphrase]').fill(pw); f.locator('button[type=submit]').click(); page.wait_for_timeout(1500); assert 'Unlocked' in sheet.inner_text(); close()
-            ctx.set_offline(False); page.evaluate('window.__online=true')
+            ctx.set_offline(False); page.evaluate("delete navigator.onLine")
         story('S80', s80)
         def s04():
             ctx.set_offline(False); page.reload(); page.wait_for_selector('#nav')
+            assert page.evaluate('navigator.onLine'), 'online flag must recover after the offline story'
             assert page.evaluate("async()=>{const r=await navigator.serviceWorker.getRegistration();return !!(r&&r.active)}")
         story('S04', s04)
         def s03():

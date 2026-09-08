@@ -95,24 +95,29 @@ function tripView(){const progress=checklistProgress(state.checklist);return `${
  <section><div class="card"><h2>Predeparture checklist</h2><p class="small"><span data-check-progress>${progress.done}/${progress.total} checked</span> · on this device</p><p class="caption">These are your confirmations, not an automatic guarantee that the app is trip-ready.</p>${button('Open checklist','checklist','primary full')}</div><details class="spacer"><summary>Offline checks & connections</summary>${toolLink('Technical offline check','Cache presence is not a cold-restart test','download','readiness')}${toolLink('Place search connection','Optional Kakao place search via the server','search','connection')}${toolLink('Print a fallback card','No entry PIN or Wi-Fi password','trip','print')}</details><div class="notice neutral spacer"><strong>Local to this device.</strong><p class="small">Group sharing is not connected. Giving someone the Pages URL does not share local edits.</p></div></section></div>`;}
 
 function openSheet(title,content,kind='generic'){
+ $('#print-panel').replaceChildren();
  if(state.closing){clearTimeout(state.closeTimer);state.closing=false;sheet.classList.remove('closing');}
  state.formDirty=false;state.modalKind=kind;
  sheet.innerHTML=`<div class="sheet-header"><h2 id="sheet-title">${title}</h2>${button(icon('close'),'close','icon-button','aria-label="Close panel"')}</div><div class="sheet-body">${content}</div>`;
  if(!sheet.open)sheet.showModal();sheet.scrollTop=0;hydratePhotos(sheet);
 }
+const weakPassphrase=p=>p.length<20&&p.trim().split(/\s+/).length<3;
+async function isSetupPassphrase(p){try{await unseal(STAY_SEED.envelope,p,'stay');return true;}catch{return false;}}
 const reducedMotion=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function closeSheet(force=false,immediate=false){
- if(!sheet.open||state.closing)return;
- if(state.formDirty&&!force&&!confirm('Discard the changes in this open form? Your saved copy will be kept.'))return;
+ if(!sheet.open)return;
+ if(state.closing){if(!immediate)return;clearTimeout(state.closeTimer);state.closing=false;}
+ else if(state.formDirty&&!force&&!confirm('Discard the changes in this open form? Your saved copy will be kept.'))return;
  state.formDirty=false;
- if(immediate||reducedMotion()||document.hidden){sheet.close();return;}
- // Exit the way it entered: slide back down, then close. A timer guards a missing transitionend.
+ // Immediate closes are the lock paths: empty the DOM synchronously so secrets never wait on the queued close event.
+ if(immediate||reducedMotion()||document.hidden){if(immediate)sheet.innerHTML='';sheet.close();return;}
+ // Exit the way it entered: slide back down, then close. Only the sheet's own transform counts; a timer guards a missing event.
  state.closing=true;sheet.classList.add('closing');
- const done=()=>{if(!state.closing)return;state.closing=false;sheet.classList.remove('closing');sheet.close();};
- sheet.addEventListener('transitionend',done,{once:true});state.closeTimer=setTimeout(done,240);
+ const done=ev=>{if(ev&&(ev.target!==sheet||ev.propertyName!=='transform'))return;if(!state.closing)return;state.closing=false;sheet.removeEventListener('transitionend',done);clearTimeout(state.closeTimer);sheet.close();};
+ sheet.addEventListener('transitionend',done);state.closeTimer=setTimeout(done,240);
 }
 function lockStay(){state.vault=null;state.pinVisible=false;clearTimeout(state.idle);}
-sheet.addEventListener('close',()=>{lockStay();state.modalKind='';state.formDirty=false;sheet.innerHTML='';stopSpeech();});
+sheet.addEventListener('close',()=>{lockStay();state.modalKind='';state.formDirty=false;state.closing=false;sheet.classList.remove('closing');sheet.innerHTML='';stopSpeech();});
 sheet.addEventListener('cancel',ev=>{ev.preventDefault();closeSheet();});
 sheet.addEventListener('input',()=>{if(sheet.querySelector('form'))state.formDirty=true;});
 function startIdle(){clearTimeout(state.idle);if(state.vault)state.idle=setTimeout(()=>{lockStay();if(sheet.open){closeSheet(true,true);toast('Stay vault locked after 3 minutes without activity.');}},180000);}
@@ -206,6 +211,7 @@ function printCard(includeAddress=false){
  window.print();
 }
 window.addEventListener('afterprint',()=>{$('#print-panel').replaceChildren();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)$('#print-panel').replaceChildren();});
 
 function getPlace(id){const p=state.places.find(p=>p.id===id);if(!p)throw new Error('That saved find is no longer available.');return p;}
 async function copy(value){try{await navigator.clipboard.writeText(value);toast('Copied. Clipboard content may remain until replaced.');}catch{openSheet('Copy this text',`<p class="sheet-subtitle">Clipboard access was unavailable. Select and copy the text below.</p><textarea readonly rows="5">${e(value)}</textarea>`,'copy');}}
@@ -260,7 +266,7 @@ function updateTimezone(){
  sheet.querySelector('#zone-results').innerHTML=zoneResults();sheet.querySelector('#zone-error').innerHTML=zoneMessages();sheet.querySelector('#zone-mode').textContent='Comparing the selected moment.';
 }
 function checklistSheet(){const progress=checklistProgress(state.checklist);openSheet('Predeparture checklist',`<p class="sheet-subtitle"><span data-check-progress>${progress.done}/${progress.total} checked</span>. Tap an item only after you have done it. Changes are saved on this device.</p><p class="caption">These confirmations are not a certification that the app works. Device-specific checks stay unconfirmed when a backup moves to another phone.</p>${['Before departure','On this iPhone'].map(group=>`<h3 class="spacer">${group}</h3><div class="stack">${CHECKLIST.filter(x=>x.group===group).map(x=>`<div class="checklist-item"><label class="checklist-label"><input type="checkbox" data-check-id="${x.id}" ${state.checklist[x.id]?'checked':''}><span><strong>${e(x.title)}</strong><small>${e(x.detail)}</small></span></label>${x.action?button('Open relevant tool '+icon('arrow'),x.action,'text-button checklist-tool'):''}</div>`).join('')}</div>`).join('')}`,'checklist');}
-function seedStaySheet(merge=false){if(merge&&!state.vault)throw new Error('Unlock the existing stay first.');openSheet(merge?'Use supplied address':'Load your preconfigured stay',`<p class="sheet-subtitle">${merge?'Only the Korean/English address and coordinates will change. Your PIN, unit and Wi-Fi fields are kept. Review and explicitly save afterward.':'Your supplied stay address and coordinates are already encrypted in this app. No unit, door PIN or booking details have been assumed.'}</p><form data-form="seed-stay" data-merge="${merge}">${field('Setup passphrase','passphrase','','password','required maxlength="256" autocomplete="current-password"')}<p class="form-help">Use the setup passphrase from your private owner notes. It is not your entry PIN.</p><p class="form-error" role="alert"></p><button type="submit" class="primary full">${merge?'Load address for review':'Unlock and save on this phone'}</button></form>`,'stay-seed');}
+function seedStaySheet(merge=false){if(merge&&!state.vault)throw new Error('Unlock the existing stay first.');openSheet(merge?'Use supplied address':'Load your preconfigured stay',`<p class="sheet-subtitle">${merge?'Only the Korean/English address and coordinates will change. Your PIN, unit and Wi-Fi fields are kept. Review and explicitly save afterward.':'Your supplied stay address and coordinates are already encrypted in this app. No unit, door PIN or booking details have been assumed.'}</p><form data-form="seed-stay" data-merge="${merge}">${field('Setup passphrase','passphrase','','password','required maxlength="256" autocomplete="one-time-code"')}<p class="form-help">Use the setup passphrase from your private owner notes. It is not your entry PIN.</p><p class="form-error" role="alert"></p><button type="submit" class="primary full">${merge?'Load address for review':'Unlock and save on this phone'}</button></form>`,'stay-seed');}
 
 document.addEventListener('click',async ev=>{
  const b=ev.target.closest('[data-action]');if(!b||b.disabled)return;
@@ -353,6 +359,8 @@ sheet.addEventListener('submit',async ev=>{
    }
    case 'stay':{
     if(values.passphrase!==values.confirm)throw new Error('The passphrases do not match.');
+    if(weakPassphrase(values.passphrase))throw new Error('Use at least three words or 20 characters. This passphrase protects your door PIN.');
+    if(await isSetupPassphrase(values.passphrase))throw new Error('That is the shared setup passphrase from the handoff notes. Choose a passphrase only you know for a vault that holds your PIN.');
     const vault=cleanStay(values);
     if(!vault.addressKo)throw new Error('Add the Korean accommodation address.');
     const cipher=await seal(vault,values.passphrase,'stay');await db.setMeta('stay',cipher);state.vaultExists=true;lockStay();closeSheet(true);render();toast('Stay encrypted and saved. Make a recovery backup.');break;
@@ -373,6 +381,7 @@ sheet.addEventListener('submit',async ev=>{
    }
    case 'backup':{
     if(values.passphrase!==values.confirm)throw new Error('The passphrases do not match.');
+    if(weakPassphrase(values.passphrase))throw new Error('Use at least three words or 20 characters. A backup leaves this phone, so its passphrase must resist guessing.');
     const snap=await serializePhotos(await db.snapshot()),serialized=JSON.stringify(snap);if(new TextEncoder().encode(serialized).byteLength>13*1024*1024)throw new Error('This trip is too large for a 20 MB backup. Remove unneeded photos after saving them elsewhere.');
     const envelope=await seal(snap,values.passphrase,'backup');if(!form.isConnected||document.hidden)break;
     downloadFile(JSON.stringify(envelope),'seoul-pocket-backup-'+seoulDate()+'.json');state.formDirty=false;toast('Encrypted backup prepared. Confirm that the file appears in Files or your browser downloads.');break;
@@ -403,7 +412,7 @@ db.onOtherTabChange(()=>load().then(render).catch(err=>toast(errorMessage(err)))
 async function start(){
  try{const hash=location.hash.slice(1);if(tabNames[hash])state.tab=hash;await load();render();
   registerWorker(r=>{state.update=r;render();});
-  maybeRefreshWeather();
+  maybeRefreshWeather();audioManifest().catch(()=>{});
   // Warm the voice list; this is not an offline-audio verification.
   if('speechSynthesis'in globalThis){speechSynthesis.getVoices();speechSynthesis.addEventListener('voiceschanged',()=>speechSynthesis.getVoices());}
  }catch(err){main.innerHTML=`<section class="card"><h1>Local storage needs attention.</h1><p>${e(errorMessage(err))}</p><p>Do not clear website data to troubleshoot unless you already have a backup. Try normal Safari and close other open copies.</p><h2>Emergency numbers in Korea</h2><p><a href="tel:112">112 · Police</a><br><a href="tel:119">119 · Ambulance / fire</a></p></section>`;}

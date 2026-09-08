@@ -11,7 +11,7 @@ export async function onRequestGet({request,env}){
  try{
   const upstream=new URL('https://dapi.kakao.com/v2/local/search/keyword.json');upstream.search=new URLSearchParams({query:q,size:'5',page:'1',sort:'accuracy'}).toString();
   const response=await fetch(upstream,{headers:{Authorization:'KakaoAK '+env.KAKAO_REST_API_KEY,Accept:'application/json'},signal:AbortSignal.timeout(4500)});
-  if(!response.ok)return json({error:'Place search is unavailable or its quota was reached. Open Naver directly or save manually.'},502);
+  if(!response.ok)return json({error:'Place search is unavailable or its quota was reached. Open Naver Maps directly or save manually.'},502);
   const body=await response.json();if(!Array.isArray(body.documents))throw new Error('Invalid response');
   return json({provider:'Kakao Local',retrievedAt:new Date().toISOString(),items:body.documents.slice(0,5).map(normalizeKakao)});
  }catch{return json({error:'Place search timed out or returned an invalid response. Saved finds remain available.'},502);}

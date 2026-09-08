@@ -4,7 +4,9 @@ export function stopSpeech(){globalThis.speechSynthesis?.cancel();if(active){act
 export async function speakPhrase(phrase){
  stopSpeech();const m=await audioManifest(),file=(m.reviewed||m.generated)?m.clips?.[phrase.id]:null;
  if(file&&/^\/audio\/[a-zA-Z0-9_.-]+\.(mp3|m4a|wav|ogg)$/.test(file)){
-   active=new Audio(file);await active.play();return m.reviewed?'recording':'generated';
+   active=new Audio(file);
+   try{await active.play();return m.reviewed?'recording':'generated';}
+   catch(err){active=null;if(err?.name==='NotAllowedError')throw new Error('Tap Listen again. The phone needs a fresh tap before it will play sound.');/* decode or network failure: fall through to the device voice */}
  }
  if(!('speechSynthesis'in globalThis))throw new Error('Speech is unavailable. Use Show card, or add reviewed Korean recordings before the trip.');
  const voices=speechSynthesis.getVoices(),voice=voices.find(v=>v.lang.toLowerCase().startsWith('ko')&&v.localService)||voices.find(v=>v.lang.toLowerCase().startsWith('ko'));

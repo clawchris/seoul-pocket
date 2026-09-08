@@ -1,4 +1,5 @@
 import {json} from '../_lib/http.js';
+const cached=(value)=>{const r=json(value);r.headers.set('Cache-Control','public, max-age=300');return r;};
 import {validateRate} from '../../public/src/domain.js';
 /** Public, fixed upstream request. Cannot be used as an arbitrary URL fetch proxy. */
 export async function onRequestGet({env={}}){
@@ -7,6 +8,6 @@ export async function onRequestGet({env={}}){
   if(!response.ok)return json({error:'Rate provider unavailable. Use your saved rate or set one manually.'},502);
   const data=await response.json(),row=Array.isArray(data)?data.find(r=>r.base==='USD'&&r.quote==='KRW'):null;
   if(!row)throw new Error('Invalid response');
-  return json(validateRate({...row,source:'Frankfurter'}));
+  return cached(validateRate({...row,source:'Frankfurter'}));
  }catch{return json({error:'Could not refresh the reference rate. Existing local rate is unchanged.'},502);}
 }

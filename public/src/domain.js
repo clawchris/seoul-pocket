@@ -63,7 +63,7 @@ export function normalizeKakao(item) {
   // Kakao returns WGS84 degrees as strings: x = longitude, y = latitude. Reject out-of-region values.
   let lng=Number(item.x), lat=Number(item.y);
   if(!(lat>=31.43&&lat<=44.35&&lng>=122.37&&lng<=132)) lat=lng=null;
-  const links=[item.place_url].map(safeURL).filter(Boolean);
+  const links=[item.place_url].map(u=>safeURL(String(u||'').replace(/^http:\/\//,'https://'))).filter(Boolean);
   const category=strip((item.category_name||'').split('>').pop().trim());
   return {name:strip(item.place_name),korean:strip(item.place_name),address:strip(item.road_address_name||item.address_name),category,phone:strip(item.phone||''),links,lat,lng,source:'Kakao Local'};
 }
