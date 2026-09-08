@@ -266,7 +266,7 @@ def main():
             f.locator('[name=passphrase]').fill('short'); f.locator('[name=confirm]').fill('short'); f.locator('button[type=submit]').click(); page.wait_for_timeout(300)
             assert sheet.evaluate('s=>s.open'), 'short passphrase must be rejected'
             pw = 'test phrase with enough length'; f.locator('[name=passphrase]').fill(pw); f.locator('[name=confirm]').fill(pw + 'x'); f.locator('button[type=submit]').click(); page.wait_for_timeout(300)
-            assert 'match' in f.locator('.form-error').inner_text()
+            assert 'differ' in f.locator('.form-error').inner_text()
             f.locator('[name=confirm]').fill(pw); f.locator('button[type=submit]').click(); page.wait_for_timeout(1500); assert not sheet.evaluate('s=>s.open')
             raw = page.evaluate("async()=>{const d=await import('/src/db.js');return JSON.stringify(await d.getMeta('stay'));}")
             assert '9999#' not in raw and 'wifi-secret' not in raw and pw not in raw and 'AES-GCM' in raw

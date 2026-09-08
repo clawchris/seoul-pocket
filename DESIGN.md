@@ -13,7 +13,7 @@ One authored moment, feedback on press, nothing on navigation.
 
 | Moment | Decision | Values |
 |---|---|---|
-| Bottom sheet opens | Slide up from its own height, backdrop fades | `translateY(100%) → 0`, 320ms, `--ease-drawer cubic-bezier(.32,.72,0,1)` via `@starting-style` |
+| Bottom sheet opens | Slide up from its own height, backdrop fades | `translateY(100%) → 0`, 260ms, `--ease-drawer cubic-bezier(.32,.72,0,1)` via `@starting-style` |
 | Bottom sheet closes | Exits the way it entered, faster | `translateY(100%)`, 180ms; JS adds `.closing`, closes the dialog on `transitionend` or a 240ms fallback |
 | Desktop sheet (≥680px) | Centered, so it rises 18px and scales from .985 with opacity | same durations |
 | Press on any tappable surface | Scale feedback | `scale(.97)` (`.985` on place cards), 120ms, `--ease-out cubic-bezier(.23,1,.32,1)` |
@@ -31,4 +31,4 @@ Controls name the action ("Encrypt and save stay", "Import without overwriting")
 No page-load choreography, no section reveals, no hover-only affordances, no pulsing indicators, no gradient text, no glass as decoration, no modal for anything a card can carry inline, no select elements for choices with fewer than five options.
 
 ## Still open
-The hero keeps a location line above its heading; Impeccable would delete the eyebrow. It stays because it carries the neighborhood, which is data. A native-speaker pass on the 28 audio clips and Korean phrase text is pending and is the only remaining content review before the trip.
+The hero eyebrow was removed after the design audit; the clock line now carries the neighborhood. Remaining `.eyebrow` uses are plain 13px labels, not uppercase kickers. A native-speaker pass on the 28 audio clips and Korean phrase text is pending and is the only remaining content review before the trip.
