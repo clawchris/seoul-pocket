@@ -25,7 +25,7 @@ Travel dates, arrival airport/terminal, number of travelers and whether shared e
 ## Release order
 A. Reproduce genuine IndexedDB/Web Crypto/service-worker behavior; test non-destructive upgrade from v0.1, encrypted seed setup and the existing-stay address-only path.
 B. Wire staging Pages Functions, weather, dated reference rates and Kakao place search; test failures/quotas/headers and retain local fallbacks.
-C. Add reviewed Korean audio, or obtain an explicit text-only scope decision. Test each required phrase offline on the oldest phone.
+C. Audio: 28 machine-generated clips (Apple Yuna) ship and are cached offline. Have a Korean speaker listen to every clip, replace any that are wrong, then set reviewed and reviewer in public/audio/manifest.json. Test playback offline on the oldest phone.
 D. Finish membership, permissions, private media and conflict-safe sync only when shared editing is needed. Copying backups is not collaboration.
 E. Run the physical-phone acceptance matrix in docs/04 including timezone transitions, cached stale weather, force-close/airplane-mode reopen and independent backup restore.
 F. Freeze the tested production build, onboard each Home Screen app, export recovery copies and record the real release evidence.

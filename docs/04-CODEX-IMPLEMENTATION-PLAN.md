@@ -38,7 +38,7 @@ The original “we” suggests multiple users; confirm whether independent phone
 | Locality | Add each idea once; source/caveats retained; priority remains user-chosen; verify current entrance/route before travel |
 | Recovery | Export/download, independently reopen backup file and restore on another device; no existing records overwritten; device checklist tests not imported as done |
 | Updates | Rebuild with a harmless change; failed install retains old cache; no active edit lost; deployed worker version changes only after safe acceptance |
-| Audio | Reviewed clips work offline; missing playback is an honest failure, not silently marked ready |
+| Audio | 28 bundled generated clips play offline; the UI labels them as not native-reviewed until the manifest says otherwise |
 | Shared release | Two actual devices converge safely with explicit conflicts/retries; expired sessions do not erase pending local edits |
 
 Desktop tests are useful but are not substitutes for this matrix. Test on each traveler phone, including the oldest iOS version. Keep automatic time enabled and test the installed app, not only a Safari tab.

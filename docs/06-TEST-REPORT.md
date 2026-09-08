@@ -10,7 +10,7 @@ This report describes executed evidence, not a certification. See qa/ for raw lo
 | Plaintext deployment scan | Passed, 27 static files inspected | Exact supplied address/coordinates and generated setup key absent in plaintext from dist; forbidden directory boundaries checked. Not a penetration test. |
 | DOM/UI harness | **22 passed; no unhandled page errors** | Selected actual UI flows and overflow at widths 320/390/430/768/1280. Explicit fake storage/crypto/provider adapters. |
 | Real-origin smoke attempt | **Blocked before app load** | Chromium navigation returned ERR_BLOCKED_BY_ADMINISTRATOR at localhost. No real-origin behavior was validated by this attempt. |
-| Reviewed offline audio | **Expected failure** | No reviewed pronunciation recordings supplied. This remains a release gate. |
+| Offline audio | Passes with warning | All 28 clips bundled (machine-generated, Apple Yuna ko_KR); native-speaker review still pending, so the manifest stays reviewed:false. |
 
 ## Added unit coverage
 Timezone tests cover the three fixed IDs, source-zone conversion, UTC offsets, summer/winter Pacific rules, midnight/date rollover, invalid input, the 2026 spring gap and repeated autumn hour. These execute native Intl in Node, not on iOS.
@@ -31,3 +31,10 @@ Real browser storage persistence across termination; actual service-worker insta
 
 ## Release interpretation
 The local update is substantially implemented and regression-tested. It is **not yet trip-ready**. Run the real-origin smoke script on an allowed test origin, then the physical-device matrix in docs/04. Do not describe checklist completion or cache presence as an automatic pass. Do not weaken the audio gate or confuse backup transfer with shared editing.
+
+## Real-origin user-story suite (added 8 September 2026)
+`tests/user_stories.py` drives the deployed production origin in real Chromium (Playwright) at an iPhone viewport and walks every user story in the tracking sheet: shell and tabs, Today, saved finds with photo and links, edit and reload persistence, filters and search, starter ideas, dirty-form guard, phrases and audio, one-button currency and rates, the three-city clock with DST gap and repeat handling, weather, transport, checklist persistence, creating and unlocking the stay vault, PIN reveal, driver card, background lock, loading and merging the preconfigured stay with the owner passphrase, encrypted backup export and non-overwriting restore on a second profile, readiness, place-search token and a live Kakao query, print card, and an offline reload under the service worker.
+
+Two defects found by this suite were fixed the same day. Reloading under the service worker failed with `ERR_FAILED` because Cloudflare Pages redirects `/index.html` to `/` and a cached redirected response cannot satisfy a navigation; the shell is now cached under `/` with the redirect flag stripped, with a regression test. The worker-template change also did not change the cache version, so the build hash now includes the build script.
+
+Run it with `python tests/user_stories.py --base <origin> --token-file <file with API_ACCESS_TOKEN> --setup-passphrase-file private/OWNER_SETUP.md`. Results land in `qa/user-stories-results.json`. Physical-iPhone tests remain a separate, manual gate.

@@ -92,7 +92,7 @@
  {
   "id": "S31",
   "result": "PASS",
-  "note": "Playing Korean device voice. Offline reliability still needs testing."
+  "note": "Playing bundled Korean voice. Works offline; not yet native-speaker reviewed."
  },
  {
   "id": "S32",
@@ -131,8 +131,8 @@
  },
  {
   "id": "S46",
-  "result": "FAIL",
-  "note": "Locator.inner_text: Timeout 30000ms exceeded. @line 250"
+  "result": "PASS",
+  "note": ""
  },
  {
   "id": "S51",
@@ -201,8 +201,8 @@
  },
  {
   "id": "S80",
-  "result": "FAIL",
-  "note": "AssertionError @line 362"
+  "result": "PASS",
+  "note": ""
  },
  {
   "id": "S04",

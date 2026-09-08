@@ -190,8 +190,12 @@ def main():
             assert page.locator('.phrase').count() >= 1 and 'water' in page.locator('.phrase').first.inner_text().lower(); page.locator('#phrase-search').fill('')
         story('S30', s30)
         def s31():
-            page.locator('[data-action=listen]').first.click(); page.wait_for_timeout(400)
-            t = page.locator('#toast').inner_text(); assert 'voice' in t.lower() or 'recording' in t.lower() or 'speech' in t.lower(), t; return t[:80]
+            page.locator('[data-action=listen]').first.click()
+            t = ''
+            for _ in range(12):
+                page.wait_for_timeout(400); t = page.locator('#toast').inner_text()
+                if 'voice' in t.lower() or 'recording' in t.lower() or 'speech' in t.lower(): break
+            assert 'voice' in t.lower() or 'recording' in t.lower() or 'speech' in t.lower(), t; return t[:80]
         story('S31', s31)
         def s32():
             page.locator('[data-action=phrase-card]').first.click(); page.wait_for_timeout(300)
@@ -244,11 +248,16 @@ def main():
         def s46():
             act('checklist'); assert sheet.locator('input[data-check-id]').count() == 12
             sheet.locator('[data-check-id=documents]').check(); page.wait_for_timeout(400)
-            assert sheet.evaluate('s=>s.open'), 'sheet closed after checking a box: ' + str(page.evaluate("document.querySelector('#toast')?.innerText"))
-            assert '1/12' in sheet.locator('[data-check-progress]').inner_text(timeout=3000)
-            sheet.locator('.checklist-tool').first.click(); page.wait_for_timeout(300)
-            assert sheet.locator('#sheet-title').inner_text() != 'Predeparture checklist'; close()
-            page.reload(); page.wait_for_selector('#nav'); assert '1/12' in page.locator('[data-check-progress]').first.inner_text()
+            trace = []
+            for _ in range(12):
+                trace.append(page.evaluate("()=>[document.querySelector('#sheet').open, document.querySelector('#sheet-title')?.innerText, document.querySelector('#sheet').className, document.querySelector('#sheet [data-check-progress]')?.innerText]")); page.wait_for_timeout(250)
+            assert trace[-1][0] and trace[-1][3] and '1/12' in trace[-1][3], 'trace: ' + str(trace)
+            sheet.locator('.checklist-tool').first.click()
+            trace2 = []
+            for _ in range(12):
+                page.wait_for_timeout(250); trace2.append(page.evaluate("()=>[document.querySelector('#sheet').open, document.querySelector('#sheet-title')?.innerText, document.querySelector('#sheet').className, document.querySelector('#toast')?.innerText, document.activeElement?.outerHTML?.slice(0,60)]"))
+            assert trace2[-1][0] and trace2[-1][1] != 'Predeparture checklist', 'trace2: ' + str(trace2); close()
+            page.reload(); page.wait_for_selector('#nav'); tab('trip'); assert '1/12' in page.locator('[data-check-progress]').first.inner_text(), 'checklist state must survive a reload'
         story('S46', s46)
         # Trip / stay
         def s51():
@@ -336,7 +345,7 @@ def main():
         story('S58', s58)
         def s59():
             tab('trip'); page.locator('summary', has_text='Offline checks').click(); act('readiness'); page.wait_for_timeout(2500)
-            t = sheet.inner_text(); assert 'cached on this device' in t and 'NOT verified' in t and 'written Korean phrases' in t, t[:300]
+            t = sheet.inner_text(); assert 'cached on this device' in t and ('NOT verified' in t or 'machine-generated' in t or 'Reviewed audio pack' in t) and 'written Korean phrases' in t, t[:300]
             act('persist', sheet); page.wait_for_timeout(1500); assert 'Persist' in page.locator('#toast').inner_text(); close()
         story('S59', s59)
         def s60():
@@ -359,8 +368,12 @@ def main():
         story('S61', s61)
         # Offline
         def s80():
-            ctx.set_offline(True); ctx.add_init_script("Object.defineProperty(navigator,'onLine',{get:()=>!window.__online,configurable:true});window.__online=false"); page.reload(); page.wait_for_selector('#nav', timeout=15000)
+            ctx.set_offline(True); page.add_init_script("Object.defineProperty(navigator,'onLine',{get:()=>!window.__online,configurable:true});window.__online=false"); page.reload(); page.wait_for_selector('#nav', timeout=15000)
+            if page.evaluate('navigator.onLine'):
+                # Headless Chromium does not always flip navigator.onLine under network emulation; force it and fire the event the app listens for.
+                page.evaluate("Object.defineProperty(navigator,'onLine',{get:()=>false,configurable:true});window.dispatchEvent(new Event('offline'))"); page.wait_for_timeout(200)
             assert 'Offline' in page.locator('#connection').inner_text(), page.locator('#connection').inner_text()
+            assert page.evaluate("fetch('/api/health').then(()=>false).catch(()=>true)"), 'network must actually be offline'
             tab('saved'); assert page.locator('.place-card').count() >= 1 and page.locator('.place-thumb img').count() >= 1
             tab('speak'); assert page.locator('.phrase').count() == 28
             tab('tools'); page.locator('#convert-amount').fill('14000'); page.wait_for_timeout(200); assert page.locator('#convert-result').inner_text() == '$10.00'

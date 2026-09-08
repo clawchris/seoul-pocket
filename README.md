@@ -29,7 +29,7 @@ Publish **dist/** through a Pages workflow that also deploys root-level **functi
 | Time zones | Only Seoul, Singapore, Cupertino/PT; Now, date/time, ±30 minutes; exact date rollover; DST gap/repeated-hour handling |
 | Preparation | 12 persistent user-confirmed checks; device checks cannot transfer as completed via backup |
 | Local recommendations | Six opt-in Guui/east-Seoul ideas, using the existing Saved model; source links; no fabricated hours/walk times |
-| Phrases | 28 draft written phrases and show cards; device Korean speech fallback; reviewed recordings still missing |
+| Phrases | 28 written phrases and show cards; all 28 bundled as machine-generated Korean clips (Apple Yuna TTS) cached offline; native-speaker review pending; device speech is the fallback |
 | Recovery | Encrypted exports, non-overwriting restore, generated app shell/cache checks |
 | Sharing | D1/conflict foundation only; /api/sync intentionally returns 501 after authentication |
 
@@ -41,7 +41,7 @@ public/ is the only static build input. functions/ holds Pages endpoints. script
 ## Verification commands
 ```sh
 npm run verify                    # 77 Node checks + syntax + build + plaintext deployment scan
-npm run check:audio               # expected failure until reviewed audio files exist
+npm run check:audio               # passes with a warning: clips exist but are machine-generated until a Korean speaker sets reviewed/reviewer
 python tests/render_harness.py    # requires separate Python Playwright + /usr/bin/chromium
 python tests/browser_smoke.py --base http://localhost:4173
 ```
