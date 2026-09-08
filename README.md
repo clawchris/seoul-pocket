@@ -32,7 +32,7 @@ The exact Wrangler version is a Codex setup decision to verify against current C
 | Written Korean phrases | 28 included; phonetics approximate; native review pending |
 | Audio button | Device Korean speech fallback; no reviewed recordings shipped |
 | USD/KRW converter | Manual/saved rate; optional server-side reference-rate refresh |
-| Naver | App/browser handoff; basic search proxy supplied, credentials untested |
+| Naver | App/browser handoff; search proxy targets NAVER API Hub (NCP keys), credentials untested |
 | Offline | Generated service worker, app-cache check and persistence request; physical-device gate pending |
 | Group sharing | SQL schema and conflict rules only; `/api/sync` returns 501 after authentication |
 | Deployment | Configuration supplied; not deployed |

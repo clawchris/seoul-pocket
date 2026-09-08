@@ -1,5 +1,7 @@
 # Copy to .dev.vars for Wrangler only. Never commit the real file.
 # Generate at least 32 random bytes for API_ACCESS_TOKEN. Shared proxy access only.
 API_ACCESS_TOKEN=REPLACE_WITH_RANDOM_64_HEX_CHARACTERS
+# NAVER API Hub keys from the Naver Cloud Platform console (AI·NAVER API > application > Authentication information).
+# NAVER_CLIENT_ID is the X-NCP-APIGW-API-KEY-ID value; NAVER_CLIENT_SECRET is the X-NCP-APIGW-API-KEY value.
 NAVER_CLIENT_ID=
 NAVER_CLIENT_SECRET=
