@@ -1,4 +1,4 @@
-# 03 · Architecture and security contract
+# 03 · Architecture and security contract · v0.2
 Prepared 7 September 2026. **Implemented** and **proposed** are distinguished throughout. This document is a design/implementation handoff, not an independent security audit.
 
 ## 1. Architecture decision
@@ -8,12 +8,12 @@ The local app uses semantic HTML, CSS and native JavaScript modules, without a r
 iPhone Home Screen app
   UI → domain validation → IndexedDB transaction → acknowledged local save
   ├─ static files and reviewed audio → versioned first-party CacheStorage
-  ├─ Naver/FX request → same-origin Pages Function → fixed provider endpoint
+  ├─ Naver/FX/weather request → same-origin Pages Function → fixed provider endpoint
   ├─ map/social link → external application or browser
   └─ future outbox → authorized sync Function → D1 / private R2
 ```
 
-The app shell contains no real trip data and may be publicly served. Private data must not be included in a build, static JSON fixture, source map or public asset URL. Authentication of a remote trip is separate from unlocking an already cached local stay. Do not require an online authentication redirect just to open downloaded emergency information.
+The shell may be publicly served and intentionally contains one authenticated ciphertext-only stay seed. It must contain no plaintext exact stay address, coordinates, PIN, setup key or other secrets. Public UI identifies the Guui/Gwangjin area. The private source/key, documentation and private screenshots must remain outside the static build and public Git. Authentication of a remote trip is separate from unlocking an already cached local stay. Do not require an online authentication redirect just to open downloaded emergency information.
 
 ## 2. Source map
 `app.js` renders screens and handles events; `ui.js` contains escaped HTML helpers and icons; `domain.js` contains validations, map links, rate rules and the preliminary conflict reducer. `db.js` owns local transaction boundaries; `crypto.js` owns native encryption; `media.js` bounds/re-encodes photos and serializes them for backup; `audio.js` chooses a reviewed clip or device voice; `offline.js` manages registration/readiness/update requests. `scripts/build.mjs` creates the deployable directory and service worker.
@@ -24,7 +24,7 @@ This is a compact prototype with substantial behavior. Before large features, sp
 Database `seoul-pocket`, schema version 1. Stores use keyPath `id`:
 - `places`: validated find records.
 - `photos`: `{id, blob, width, height}` for local compressed images.
-- `meta`: `{id,value}` for `prefs`, `rate`, and encrypted `stay`.
+- `meta`: `{id,value}` for `prefs`, `rate`, encrypted `stay`, `toolPrefs`, validated `weather`, and per-item `check:<id>` booleans.
 
 A find contains `id`, `name`, `korean`, `kind`, `neighborhood`, `address`, `note`, `links[]`, `status`, `priority`, `date`, `time`, `lat`, `lng`, `photoId`, `source`, `checkedAt`, `rev`, `updatedAt`. Current statuses are `saved`, `planned`, `visited`, `skipped`. Null coordinate pairs are valid; partial or out-of-region pairs are not. Links allow HTTP/S only and no embedded credentials. A source can identify a provider without suggesting its data was independently verified.
 
@@ -44,7 +44,7 @@ Closing/backgrounding/idle expiration clears the in-memory stay reference and re
 ## 5. Backup/restore behavior
 Maximum incoming backup: 20 MB. Before encrypting, the serialized UTF-8 payload must fit the export budget. Imported arrays, schema, IDs, photos, rates and stay envelope shape are validated. Photos accept bounded JPEG/PNG/WebP blobs. Restoring assigns new IDs to finds/photos and rewrites photo references. Existing finds remain untouched; an existing stay wins over the imported stay. Current settings and rate are preserved, not merged.
 
-This non-overwriting strategy is intentionally conservative. Add an import preview and duplicate-selection controls in a later improvement. Do not change restore into a blanket replacement of the user's active trip. A future stronger backup format should include manifest checksums, migration support and a portable recovery helper; the current backup depends on this application version and its passphrase.
+This non-overwriting strategy is intentionally conservative. Do not change restore into a blanket replacement of the user's active trip. A future stronger backup format should include manifest checksums, migration support and a portable recovery helper; the current backup depends on this application version and its passphrase.
 
 ## 6. Offline and update behavior
 The build hashes the real public file paths and bytes, then generates a cache name and explicit asset list. Install uses `cache.addAll`; a failed install removes its incomplete new cache. API, non-GET and cross-origin requests bypass caching. Controlled navigations use the cached shell. An update waits for a user action rather than immediately calling `skipWaiting`. The previous application cache is retained alongside the current one; unrelated caches are untouched.
@@ -58,12 +58,12 @@ Critical tests: first installation; a second controlled load; entirely offline r
 |---|---|
 | `GET /api/health` | Static service status; no private details |
 | `GET /api/rates` | Fixed USD/KRW reference endpoint, validated response, useful 502 failure |
-| `GET /api/naver?q=` | Requires private proxy bearer; 1–100-character search; up to five normalized results |
+| `GET /api/places?q=` | Requires private proxy bearer; 1–100-character search; up to five normalized Kakao Local results |
 | `POST /api/sync` | Requires private proxy bearer, then intentionally 501; no writes |
 
 The preview server does not execute these Functions. Mocked-fetch tests check their code, not live upstream compatibility.
 
-Naver secrets use `NAVER_CLIENT_ID` and `NAVER_CLIENT_SECRET`. The temporary `API_ACCESS_TOKEN` is a high-entropy owner-managed development proxy token, entered into memory only and cleared on background. It is **not** production per-member authorization or a group-encryption key. Same-origin checks and comparison of token digests are supplied. No generic URL fetcher exists; upstream hosts are fixed. Search results are stripped of markup and rendered escaped [S5–S9].
+Place search uses Kakao Local keyword search with the `KAKAO_REST_API_KEY` secret. Naver's search API was dropped on 8 September 2026 because NAVER API Hub requires a Naver Cloud Platform account the owner cannot open; Naver Maps deep links for directions remain and need no credentials. The temporary `API_ACCESS_TOKEN` is a high-entropy owner-managed development proxy token, entered into memory only and cleared on background. It is **not** production per-member authorization or a group-encryption key. Same-origin checks and comparison of token digests are supplied. No generic URL fetcher exists; upstream hosts are fixed. Search results are stripped of markup and rendered escaped [S5–S9].
 
 Rates use the fixed Frankfurter v2 endpoint with base USD and quote KRW, bounded timeout, validation and a dated local fallback [S15]. A rate reference has no payment-settlement guarantee. Provider failures do not erase an existing rate. Add abuse limiting to public rate refresh and authorized Naver search before opening production endpoints broadly.
 
@@ -99,6 +99,26 @@ Use a private bucket and membership-checked upload/download routes. Upload bound
 Foreground sync on opening, returning to the app and an explicit Sync now action; bounded backoff with jitter on retriable failures. Do not rely on background execution to complete anything critical. Pause on offline, retain every pending mutation and show useful status. Preserve tombstones/receipts at least for the entire active trip plus recovery period; use a documented full-resync policy before pruning history. A suggested owner-confirmed deletion date is 30 days after departure, not a silent default already implemented.
 
 ## 9. Deployment/security controls
-Static `_headers` supplies a restrictive CSP and no-referrer behavior. Functions add their own response headers because they are a separate serving path. `_routes.json` sends only `/api/*` to Functions. Do not publish `tests/`, fixtures, docs, backups or `.dev.vars`. No analytics or third-party scripts are included. Error telemetry, when added, must redact addresses, names, links with personal tokens, passphrases, ciphertext request bodies and authentication headers.
+Static `_headers` supplies a restrictive CSP and no-referrer behavior. Functions add their own response headers because they are a separate serving path. `_routes.json` sends only `/api/*` to Functions. Do not publish `private/`, `qa/`, `tests/`, fixtures, docs, backups, this ZIP or `.dev.vars`. Only dist is the static root. The private setup key must never become a Cloudflare public variable. No analytics or third-party scripts are included. Error telemetry, when added, must redact addresses, names, links with personal tokens, passphrases, ciphertext request bodies and authentication headers.
 
 Production checklist: HTTPS; correct final origin in map handoff; prod/preview secrets separated; no credentials in browser bundles; blocked cross-origin calls; object-level authorization tested; malformed input bounded; no public R2 objects; rate limiting; permission revocation; encrypted backup restore; dependency/tool versions recorded; actual deployed headers checked; no false readiness states.
+
+
+## 10. v0.2 modules and exact stay provisioning
+`timezones.js` owns fixed IANA conversions; `weather.js` validates/normalizes forecasts; `checklist.js` defines stable completion IDs and restore rules; `locality.js` contains public district ideas/sources; `stay.js` validates optional coordinates and performs address-only merges. `stay-seed.js` contains only an ID and authenticated encrypted envelope. No new framework, third-party script or local database reset was introduced.
+
+The owner-only source/key live in private/. scripts/prepare-stay.mjs uses the same genuine Web Crypto envelope to seal the supplied exact address/coordinates with a random strong setup passphrase, which is written only to private/OWNER_SETUP.md. It refuses seeded entry/Wi-Fi passwords. This operation is not called by build and does not migrate existing local vaults. On a fresh phone, successful user decryption precedes a transactionally insert-if-absent write. On an existing phone, the separately unlocked seed is merged only into a draft; PIN/unit/name/Wi-Fi/notes are retained. The user reviews and explicitly re-encrypts/saves.
+
+The build's plaintext scan checks exact English/Korean address, full coordinates and generated key against dist when private source is available; otherwise it checks directory boundaries and reports the narrower coverage. It is a deterministic leak check, not proof that every possible metadata inference or encoded disclosure is impossible. Public approximate locality remains inferable. The private ZIP contains both ciphertext and the original key and must not be public. Rotating one local vault password does not revoke that original pair.
+
+## 11. Weather API, caching and failure contract
+GET /api/weather uses fixed approximate coordinates 37.54,127.09 and Asia/Seoul, with Celsius/kmh base units, three forecast days and bounded fields. Exact stay/GPS are not sent. Client inputs cannot select an upstream or location. A 4.5-second upstream timeout and 10-minute Cloudflare cache hint bound ordinary work; actual deployed caching and abuse limiting remain to test. Free non-commercial provider access is rate limited, not an uptime guarantee [S37–S38].
+
+Normalize and validate schema, units, explicit timezone, model time, fetch time and bounded arrays. Null precipitation probability is unknown, not zero. Store only validated last-successful snapshots in IndexedDB; service worker never intercepts API responses. The foreground refresh interval is 30 minutes with a retry cooldown; no background execution guarantee is assumed. Age uses the older of model/fetch information, with a 90-minute stale boundary and six-hour old boundary. Failed refresh leaves the saved value and original timestamp. Forecast data is plaintext locally and is not restored as a fresh current snapshot by backup import.
+
+Attribution remains in the UI. Formatting and C/F conversion are local transformations; raw model output is not a personal weather sensor, live observation or official warning. Initial app contains no fabricated forecast. Test fixtures remain under tests/ only.
+
+## 12. Fixed timezone conversion and checklist
+Use native Intl.DateTimeFormat with Asia/Seoul, Asia/Singapore and America/Los_Angeles. Invert wall time by enumerating nearby UTC offsets and verifying a round trip, never by treating a local datetime input as UTC or the device timezone. Zero candidates means a DST gap; two candidates require explicit choice. The range accepted by this UI is 2000–2100; tests cover current-era transitions, not a guarantee about future timezone law. Correct phone clock/OS timezone rules remain prerequisites [S39].
+
+Checklist records are separate boolean metadata keys, so writing one completion does not overwrite the entire checklist from a stale tab. Snapshot validation checks IDs/boolean types. Restore copies only missing general preparation keys; device-specific confirmations are never imported as done on a new phone. Local user completions are not automatic evidence, server-shared state or permission to label the product ready.

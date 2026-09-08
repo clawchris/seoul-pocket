@@ -38,4 +38,24 @@ Climate Card coverage is date dependent and official pages may reflect different
 Some older Naver code samples show outdated result counts or coordinate formats. The implementation follows the current parameter table and the coordinate migration notice, not every historical sample. Naver Cloud API Hub onboarding may differ from the traditional Developers API targeted by the proxy.
 
 ## Content provenance
-Korean phrases/phonetics are authored starter content, not copied audio or a certified translation. The general pack needs native review. No licensed venue photos or audio have been downloaded into the project. Original interface icons are included. User uploads and externally linked videos retain their owners' rights. The screenshot cafe/address/rate are synthetic fixtures, not real trip data or current financial quotes.
+Korean phrases/phonetics are authored starter content, not copied audio or a certified translation. The general pack needs native review. No licensed venue photos or audio have been downloaded into the project. Original interface icons are included. User uploads and externally linked videos retain their owners' rights. Weather/rate/added-find screenshot values are synthetic UI fixtures, not live data. The stay screenshot uses the supplied real address and is private. Local ideas use linked sources; no individual venue photos were copied.
+
+
+## v0.2 additions: source-to-claim mapping
+| ID | Primary source | Used for / boundary |
+|---|---|---|
+| S27 | [Seoul Stay building listing](https://stay.visitseoul.net/seoul-stay/view/TheHavenStay?lang=en&us=11000) | Search result matches supplied address and exact coordinates. Does not establish the user's unit, booking/property identity or entry instructions. Direct page access was inconsistent; match came from the indexed official result. |
+| S28 | [Visit Seoul: Guui transport reference](https://english.visitseoul.net/area/Dido-Jazz-Lounge/ENP040935) | Guui Station is Line 2. This listing's exit is not assumed to be the stay's exit; no venue recommendation implied. |
+| S29 | [Gwangjin: Jayang market visit, June 2026](https://www.gwangjin.go.kr/photo/bbs/B0000111/searchMainView.do?menuNo=1100002&nttId=6613088) | Market existence/locality, not individual stall ratings. |
+| S30 | [Gwangjin: April 2026 facility inspection](https://m.gwangjin.go.kr/photo/bbs/B0000111/searchMainView.do?menuNo=1100127&nttId=6573394&pageIndex=1) | Reason to recheck current market access. Does not establish present closure. |
+| S31 | [Visit Seoul: Konkuk lamb-skewer alley](https://english.visitseoul.net/tours/a-chinese-delicacy-konkuk-univ-lamb-skewer-alley/ENN000641) | Chinese-food area idea. Historic tourism editorial/indexed snippet, not a current business-hours list. Direct page can return a firewall block. |
+| S32 | [KTO: Seongsu-dong Cafe Street](https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=112801) | Café-street destination; street access hours must not be applied to all cafés. |
+| S33 | [KTO: Ttukseom Hangang Park](https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=90908) | Riverside leisure/park suggestion. Seasonal facilities/access need current confirmation. |
+| S34 | [Seoul city: Ttukseom park/Jayang station](https://english.seoul.go.kr/seoul-light-hangang-bitseom-festival-kicks-off-at-ttukseom-on-thu-oct-3/) | Station/park location only. The 2025 festival dates are NOT proposed as a 2026 event. |
+| S35 | [Seoul Facilities Corporation: Children’s Grand Park](https://www.sisul.or.kr/global/main/en/sub/park.jsp) | Operator describes gardens/facilities and multiple gates including Guuimun. |
+| S36 | [KTO: Achasan](https://english.visitkorea.or.kr/svc/whereToGo/locIntrdn/rgnContentsView.do?vcontsId=86170) | Hill/viewpoint suggestion, not a tested route or fitness assessment. |
+| S37 | [Open-Meteo forecast API](https://open-meteo.com/en/docs) | Model-based current/hourly/daily fields, timezones, units and codes. |
+| S38 | [Open-Meteo pricing/licensing](https://open-meteo.com/en/pricing) | Free endpoint: non-commercial, rate limits, no uptime guarantee; CC BY 4.0 attribution. Recheck before wider deployment. |
+| S39 | [MDN: Intl.DateTimeFormat](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat) | Native IANA timezone formatting. Specific round-trip and DST behavior is verified by supplied tests on Node; actual iPhone tests remain. |
+
+Implementation thresholds (30-minute refresh, 90-minute stale, six-hour old) are product choices, not provider promises. A local recommendation is an editorial inference from the stay area and cited place information, not a measured travel-time claim. Recheck transit, access and operating details for actual dates. No search snippets are treated as access to every unseen page detail.

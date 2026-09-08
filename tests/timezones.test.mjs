@@ -1,0 +1,16 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {ZONES,wallInput,wallToInstants,zoneRow,compareZones,offsetLabel} from '../public/src/timezones.js';
+test('time-zone choices are exactly Seoul, Singapore and Cupertino',()=>assert.deepEqual(ZONES.map(z=>z.zone),['Asia/Seoul','Asia/Singapore','America/Los_Angeles']));
+test('Seoul and Singapore differ by one hour and show date rollover',()=>{const t=Date.parse('2026-09-07T15:30:00Z'),rows=compareZones(t);assert.equal(rows[0].date,'2026-09-08');assert.equal(rows[0].time,'12:30 AM');assert.equal(rows[1].date,'2026-09-07');assert.equal(rows[1].time,'11:30 PM');assert.equal(rows[1].dayDifference,-1);});
+test('Cupertino uses PDT in summer, not a hardcoded UTC-8',()=>{const z=zoneRow(Date.parse('2026-07-01T12:00:00Z'),'cupertino');assert.equal(z.offset,-420);assert.equal(z.abbreviation,'PDT');assert.equal(z.time,'5:00 AM');});
+test('Cupertino uses PST in winter',()=>{const z=zoneRow(Date.parse('2026-01-01T12:00:00Z'),'cupertino');assert.equal(z.offset,-480);assert.equal(z.abbreviation,'PST');});
+test('Seoul selected time maps to the same epoch without host-zone assumptions',()=>assert.deepEqual(wallToInstants('2026-09-08T09:00','seoul'),[Date.parse('2026-09-08T00:00:00Z')]));
+test('Singapore wall input maps to one instant',()=>assert.deepEqual(wallToInstants('2026-09-08T08:00','singapore'),[Date.parse('2026-09-08T00:00:00Z')]));
+test('nonexistent Pacific spring time is rejected rather than shifted',()=>assert.deepEqual(wallToInstants('2026-03-08T02:30','cupertino'),[]));
+test('repeated Pacific autumn time returns both explicitly selectable instants',()=>assert.deepEqual(wallToInstants('2026-11-01T01:30','cupertino'),[Date.parse('2026-11-01T08:30:00Z'),Date.parse('2026-11-01T09:30:00Z')]));
+test('both repeated-hour candidates round-trip to the selected wall time',()=>{for(const t of wallToInstants('2026-11-01T01:30','cupertino'))assert.equal(wallInput(t,'cupertino'),'2026-11-01T01:30');});
+test('invalid time-zone/date inputs are rejected',()=>{for(const v of ['2026-02-30T12:00','2026-09-08T24:00','2026-09-08T12:61','12:00','1900-01-01T00:00'])assert.throws(()=>wallToInstants(v,'seoul'));assert.throws(()=>wallToInstants('2026-01-01T12:00','london'));});
+test('midnight remains 00:00, not 24:00 on the wrong date',()=>assert.equal(wallInput(Date.parse('2026-09-07T15:00Z'),'seoul'),'2026-09-08T00:00'));
+test('date differences are relative to the selected source city',()=>{const rows=compareZones(Date.parse('2026-09-07T15:30Z'),'cupertino');assert.equal(rows.find(r=>r.id==='seoul').dayDifference,1);assert.equal(rows.find(r=>r.id==='cupertino').dayDifference,0);});
+test('invalid dates fail closed and offsets are unambiguous',()=>{assert.throws(()=>zoneRow('invalid','seoul'));assert.equal(offsetLabel(-480),'UTC−08:00');assert.equal(offsetLabel(540),'UTC+09:00');});

@@ -1,29 +1,33 @@
-# Codex handoff: finish Seoul Pocket
+# Codex handoff: finish Seoul Pocket v0.2
 
 ## Copy-ready task
-> Finish this repository as an iPhone-first Seoul travel app on Cloudflare Pages. First read AGENTS.md and docs/01 through docs/06. Preserve the working local app and its five-tab UX. Run npm run verify, inspect the existing screenshots and reproduce the real-origin smoke test. Then complete the ordered release tasks in docs/04-CODEX-IMPLEMENTATION-PLAN.md. Prioritize reliable local storage, real-iPhone offline restart, non-destructive backup restore, reviewed offline pronunciation, and group sharing if required by the traveler. Treat the current /api/sync 501 response as an intentional boundary, not working sync. Use per-member authorization, durable outbox writes, server versions and idempotent mutations before enabling shared status. Configure and test Naver and reference rates using server-side secrets. Do not scrape third-party services or invent live travel details. Deploy a staging Cloudflare Pages project first, report the actual URL and test results, and do not describe the app as trip-ready until the documented device gates pass.
-
-## What you are receiving
-A working local implementation, not a blank wireframe. 41 Node unit/contract tests and 12 in-memory browser UI checks passed in the authoring environment. The real-browser origin was administratively blocked, so actual IndexedDB, service-worker restart and iPhone behavior remain unverified end to end. The browser UI harness does not validate those subsystems.
+> Finish the supplied v0.2 repository as an iPhone-first Seoul travel app on Cloudflare Pages. Read AGENTS.md and docs/01–07, then private/OWNER_SETUP.md locally. The exact supplied stay is already sealed into public/src/stay-seed.js; do not publish the private setup or regenerate the key during routine build. Preserve the five tabs, single Saved model, one-button USD/KRW swap, fixed Seoul/Singapore/Cupertino converter, Gwangjin weather and 12-item predeparture checklist. The earlier extra-feature proposals were declined; do not implement them. Run npm run verify, inspect the updated screenshots and reproduce tests/browser_smoke.py on a real origin. Complete the release gates in docs/04, not a cosmetic rewrite. Deploy Pages staging with the actual Functions, validate live weather/rates/Naver credentials and abuse controls, test offline cold restart and backup restoration on the actual iPhones, and finish reviewed Korean audio. When genuinely shared editing is required, complete the authenticated versioned sync design before displaying shared status. Report actual deployed URLs and passed/failed checks. Never call this trip-ready solely because the build or UI harness passes.
 
 ## First commands
 ```sh
 node --version                  # 22+
 npm run verify
-npm run preview
-# Open http://localhost:4173; Ctrl-C when done.
+npm run preview                 # http://localhost:4173; does not run Functions
 ```
-No dependency installation is needed for those commands. `dist/` is included for convenience, but always rebuild from source. Use a separate environment and pinned Wrangler version for Functions work.
+No npm installation is required. Use separate, pinned deployment/browser test tools. Rebuild dist from source. Functions stay at repository root for a supported Pages workflow.
 
-## Inputs that require the owner
-Travel dates and arrival airport/terminal; number of travelers and editor/viewer needs; current iPhone/iOS versions; home neighborhood; dietary/accessibility needs; the Cloudflare account and final domain; Naver developer or Cloud account eligibility and keys. Ask the owner to enter the actual door PIN inside the finished app, not into source code, chat logs or sample fixtures.
+## Load the provided stay
+On a fresh phone, open **Our stay → Load preconfigured stay** and use the setup passphrase in `private/OWNER_SETUP.md`. It is also the initial local vault passphrase. Keep it separately in a password manager. It is not a door PIN. The exact English/Korean address and coordinates have been preserved without inventing a unit or booking identity. Existing vaults use **Use supplied address** after unlocking; this creates a reviewed address-only edit, not a destructive replacement.
 
-## Release ordering
-A. Reproduce real-origin storage and encryption flows; repair any actual device blockers.
-B. Supply and review all 28 audio files, or obtain a conscious text-only scope decision.
-C. Wire Cloudflare staging, reference rates and optional Naver search; retain manual fallbacks.
-D. Implement group membership and conflict-safe sync when multiple people need a genuinely shared trip. Do not confuse copying an encrypted backup with collaboration.
-E. Test two iPhones under airplane mode, stale sessions, interrupted writes, simultaneous edits, app termination, backup restoration and updates.
-F. Freeze the trip build, deploy production, onboard each installed Home Screen app and export independent recovery copies.
+The private ZIP includes the setup key and plaintext source, so the ZIP itself must not be published. Serve only dist, deploy Functions separately through the Pages workflow, and keep private/docs/qa/tests out of static hosting and public Git. Ordinary saved finds/photos remain unencrypted locally.
 
-There is no hidden Cloudflare project, GitHub repository, production database or deployed URL. Credentials and paid services have not been provisioned.
+## Executed evidence
+77 Node unit/contract checks and 22 UI-harness checks passed, with zero unhandled page errors. Syntax/build/plaintext deployment scan passed. The seed decrypts to the exact owner source in the real Web Crypto test. The UI harness uses fake storage, crypto and provider data; it proves only selected DOM flows and viewport behavior. A real-origin browser attempt failed at navigation with ERR_BLOCKED_BY_ADMINISTRATOR. No installed-iPhone or live Cloudflare behavior has been established. The missing reviewed-audio gate still fails intentionally.
+
+## Owner inputs still needed
+Travel dates, arrival airport/terminal, number of travelers and whether shared editing is essential, actual iPhone/iOS versions, Cloudflare account/project/domain, and optional Naver API eligibility/credentials. The stay location and the three timezone choices are already known. Ask for entry PIN/room/Wi-Fi only inside the app, never in source or chat logs.
+
+## Release order
+A. Reproduce genuine IndexedDB/Web Crypto/service-worker behavior; test non-destructive upgrade from v0.1, encrypted seed setup and the existing-stay address-only path.
+B. Wire staging Pages Functions, weather, dated reference rates and optional Naver; test failures/quotas/headers and retain local fallbacks.
+C. Add reviewed Korean audio, or obtain an explicit text-only scope decision. Test each required phrase offline on the oldest phone.
+D. Finish membership, permissions, private media and conflict-safe sync only when shared editing is needed. Copying backups is not collaboration.
+E. Run the physical-phone acceptance matrix in docs/04 including timezone transitions, cached stale weather, force-close/airplane-mode reopen and independent backup restore.
+F. Freeze the tested production build, onboard each Home Screen app, export recovery copies and record the real release evidence.
+
+No Cloudflare project, production database, live deployment or external account was created in this handoff. The weather code is wired to a real provider contract, but deployed live behavior is unverified.

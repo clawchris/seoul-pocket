@@ -58,6 +58,15 @@ export function normalizeNaver(item) {
   if(!(lat>=31.43&&lat<=44.35&&lng>=122.37&&lng<=132)) lat=lng=null;
   return {name:strip(item.title),korean:strip(item.title),address:strip(item.roadAddress||item.address),category:strip(item.category),links:safeURL(item.link)?[safeURL(item.link)]:[],lat,lng,source:'NAVER Local Search'};
 }
+export function normalizeKakao(item) {
+  const strip=s=>text(s,350);
+  // Kakao returns WGS84 degrees as strings: x = longitude, y = latitude. Reject out-of-region values.
+  let lng=Number(item.x), lat=Number(item.y);
+  if(!(lat>=31.43&&lat<=44.35&&lng>=122.37&&lng<=132)) lat=lng=null;
+  const links=[item.place_url].map(safeURL).filter(Boolean);
+  const category=strip((item.category_name||'').split('>').pop().trim());
+  return {name:strip(item.place_name),korean:strip(item.place_name),address:strip(item.road_address_name||item.address_name),category,phone:strip(item.phone||''),links,lat,lng,source:'Kakao Local'};
+}
 export function resolveSync(local, remote) {
   if (!local) return {action:'accept-remote',record:remote};
   if (!remote) return {action:'push-local',record:local};

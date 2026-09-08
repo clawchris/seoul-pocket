@@ -1,4 +1,5 @@
 import {cleanPlace,SCHEMA,validateRate,text,validDate} from './domain.js';
+import {validateChecklistRecord,restorableChecklist} from './checklist.js';
 import {validEnvelope} from './crypto.js';
 const NAME='seoul-pocket';let opening;
 function request(req){return new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
@@ -14,6 +15,8 @@ export function database(){
 export async function all(store='places'){const d=await database();return request(d.transaction(store).objectStore(store).getAll());}
 export async function getMeta(id){const d=await database();return (await request(d.transaction('meta').objectStore('meta').get(id)))?.value;}
 export async function setMeta(id,value){const d=await database(),tx=d.transaction('meta','readwrite'),done=complete(tx);tx.objectStore('meta').put({id,value});await done;announce();}
+/** Atomic first-use insert. Never overwrites an existing vault, including one from another tab. */
+export async function setMetaIfAbsent(id,value){const d=await database(),tx=d.transaction('meta','readwrite'),done=complete(tx),store=tx.objectStore('meta'),existing=await request(store.get(id));if(!existing)store.put({id,value});await done;if(!existing)announce();return !existing;}
 export async function photo(id){const d=await database();return request(d.transaction('photos').objectStore('photos').get(id));}
 export async function savePlace(raw,expectedRev=0,newPhoto=null){
  const p=cleanPlace(raw),d=await database(),tx=d.transaction(['places','photos'],'readwrite'),done=complete(tx),store=tx.objectStore('places');
@@ -35,7 +38,7 @@ export function validateSnapshot(s){
  const ids=new Set();for(const p of s.places){cleanPlace(p);if(ids.has(p.id))throw new Error('Duplicate item in backup.');ids.add(p.id);}
  const photos=new Set();for(const p of s.photos){if(typeof p.id!=='string'||photos.has(p.id)||!(p.blob instanceof Blob)||!['image/jpeg','image/png','image/webp'].includes(p.blob.type)||p.blob.size>1024*1024)throw new Error('Invalid backup photo.');photos.add(p.id);}
  for(const p of s.places)if(p.photoId&&!photos.has(p.photoId))throw new Error('A photo is missing from the backup.');
- for(const m of s.meta){if(m.id==='stay')validEnvelope(m.value,'stay');if(m.id==='rate')validateRate(m.value);}
+ for(const m of s.meta){if(m.id==='stay')validEnvelope(m.value,'stay');if(m.id==='rate')validateRate(m.value);if(typeof m.id==='string'&&m.id.startsWith('check:'))validateChecklistRecord(m.id,m.value);}
  return s;
 }
 /** Restores as new copies. Never overwrites existing places or an existing stay vault. */
@@ -45,7 +48,12 @@ export async function restoreCopies(s){
  for(const p of s.photos){const id=crypto.randomUUID();mapping.set(p.id,id);tx.objectStore('photos').put({...p,id});}
  for(const p of s.places){const copy=cleanPlace({...p,id:crypto.randomUUID(),photoId:mapping.get(p.photoId)||'',rev:1,updatedAt:new Date().toISOString()});tx.objectStore('places').put(copy);}
  const stay=s.meta.find(m=>m.id==='stay');if(stay&&!currentStay)meta.put(stay);
- // Preferences and rates are deliberately preserved, not implicitly overwritten on restore.
+ // Restore only general preparation confirmations that are missing on the destination.
+ // Device-specific tests are never imported as complete on a different phone.
+ const prep=s.meta.filter(m=>typeof m.id==='string'&&m.id.startsWith('check:')&&restorableChecklist(m.id));
+ const existingPrep=await Promise.all(prep.map(m=>request(meta.get(m.id))));
+ prep.forEach((m,i)=>{if(!existingPrep[i])meta.put({id:m.id,value:m.value});});
+ // Existing preferences/rates remain untouched; weather is not restored as current.
  await done;announce();return {count:s.places.length,stayImported:!!stay&&!currentStay,staySkipped:!!stay&&!!currentStay};
 }
 const channel=typeof window!=='undefined'&&typeof BroadcastChannel!=='undefined'?new BroadcastChannel('seoul-pocket-updates'):null;

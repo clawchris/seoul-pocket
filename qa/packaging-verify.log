@@ -1,0 +1,500 @@
+
+> seoul-pocket@0.2.0 verify
+> npm run check && npm test && npm run build && npm run check:privacy
+
+
+> seoul-pocket@0.2.0 check
+> node scripts/check.mjs
+
+Syntax checked 36 JavaScript modules and 4 JSON files.
+
+> seoul-pocket@0.2.0 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: private API fails closed without configuration
+ok 1 - private API fails closed without configuration
+  ---
+  duration_ms: 30.399074
+  type: 'test'
+  ...
+# Subtest: private API rejects absent or wrong token
+ok 2 - private API rejects absent or wrong token
+  ---
+  duration_ms: 7.565485
+  type: 'test'
+  ...
+# Subtest: private API rejects cross-origin requests
+ok 3 - private API rejects cross-origin requests
+  ---
+  duration_ms: 1.632859
+  type: 'test'
+  ...
+# Subtest: Naver rejects long search input before an upstream call
+ok 4 - Naver rejects long search input before an upstream call
+  ---
+  duration_ms: 1.78511
+  type: 'test'
+  ...
+# Subtest: Naver exposes normalized metadata, never the credentials
+ok 5 - Naver exposes normalized metadata, never the credentials
+  ---
+  duration_ms: 4.144313
+  type: 'test'
+  ...
+# Subtest: Naver upstream failures return useful errors without a success payload
+ok 6 - Naver upstream failures return useful errors without a success payload
+  ---
+  duration_ms: 3.788495
+  type: 'test'
+  ...
+# Subtest: exchange rate uses the fixed USD/KRW upstream and validates the payload
+ok 7 - exchange rate uses the fixed USD/KRW upstream and validates the payload
+  ---
+  duration_ms: 1.010661
+  type: 'test'
+  ...
+# Subtest: invalid rate provider responses cannot overwrite a saved reference
+ok 8 - invalid rate provider responses cannot overwrite a saved reference
+  ---
+  duration_ms: 0.423705
+  type: 'test'
+  ...
+# Subtest: sync stub never claims that data was uploaded
+ok 9 - sync stub never claims that data was uploaded
+  ---
+  duration_ms: 3.73457
+  type: 'test'
+  ...
+# Subtest: Function middleware sets no-store even when the handler does not
+ok 10 - Function middleware sets no-store even when the handler does not
+  ---
+  duration_ms: 0.848118
+  type: 'test'
+  ...
+# Subtest: vault round-trip encrypts and decrypts Unicode data
+ok 11 - vault round-trip encrypts and decrypts Unicode data
+  ---
+  duration_ms: 317.742779
+  type: 'test'
+  ...
+# Subtest: wrong passphrase fails closed
+ok 12 - wrong passphrase fails closed
+  ---
+  duration_ms: 270.798613
+  type: 'test'
+  ...
+# Subtest: tampered ciphertext is rejected
+ok 13 - tampered ciphertext is rejected
+  ---
+  duration_ms: 315.415563
+  type: 'test'
+  ...
+# Subtest: purpose binding prevents a backup being used as a stay envelope
+ok 14 - purpose binding prevents a backup being used as a stay envelope
+  ---
+  duration_ms: 142.678134
+  type: 'test'
+  ...
+# Subtest: every encryption uses a new salt and IV
+ok 15 - every encryption uses a new salt and IV
+  ---
+  duration_ms: 292.59219
+  type: 'test'
+  ...
+# Subtest: a short door PIN cannot be the vault passphrase
+ok 16 - a short door PIN cannot be the vault passphrase
+  ---
+  duration_ms: 0.454877
+  type: 'test'
+  ...
+# Subtest: hostile KDF work factors and malformed envelopes are rejected before work
+ok 17 - hostile KDF work factors and malformed envelopes are rejected before work
+  ---
+  duration_ms: 0.502705
+  type: 'test'
+  ...
+# Subtest: place normalization preserves Korean, strips whitespace, and bounds fields
+ok 18 - place normalization preserves Korean, strips whitespace, and bounds fields
+  ---
+  duration_ms: 1.475588
+  type: 'test'
+  ...
+# Subtest: places require a name and a safe identifier
+ok 19 - places require a name and a safe identifier
+  ---
+  duration_ms: 0.327614
+  type: 'test'
+  ...
+# Subtest: URL validation rejects scripts, data URLs, embedded credentials, and broken URLs
+ok 20 - URL validation rejects scripts, data URLs, embedded credentials, and broken URLs
+  ---
+  duration_ms: 0.330457
+  type: 'test'
+  ...
+# Subtest: HTML escaping prevents markup and attribute insertion
+ok 21 - HTML escaping prevents markup and attribute insertion
+  ---
+  duration_ms: 0.377761
+  type: 'test'
+  ...
+# Subtest: invalid link input is rejected instead of silently discarded
+ok 22 - invalid link input is rejected instead of silently discarded
+  ---
+  duration_ms: 0.240247
+  type: 'test'
+  ...
+# Subtest: calendar validation catches impossible dates
+ok 23 - calendar validation catches impossible dates
+  ---
+  duration_ms: 1.82185
+  type: 'test'
+  ...
+# Subtest: currency handles commas, decimals, and both directions
+ok 24 - currency handles commas, decimals, and both directions
+  ---
+  duration_ms: 0.346494
+  type: 'test'
+  ...
+# Subtest: currency rejects partial, negative, huge, and exponent input
+ok 25 - currency rejects partial, negative, huge, and exponent input
+  ---
+  duration_ms: 0.283975
+  type: 'test'
+  ...
+# Subtest: provider rate validates pair and date
+ok 26 - provider rate validates pair and date
+  ---
+  duration_ms: 0.764036
+  type: 'test'
+  ...
+# Subtest: staleness is based on provider date, not fetch time
+ok 27 - staleness is based on provider date, not fetch time
+  ---
+  duration_ms: 1.271569
+  type: 'test'
+  ...
+# Subtest: trip dates use Seoul even when it is yesterday in the US
+ok 28 - trip dates use Seoul even when it is yesterday in the US
+  ---
+  duration_ms: 29.385576
+  type: 'test'
+  ...
+# Subtest: Naver links encode text and include the web app identifier
+ok 29 - Naver links encode text and include the web app identifier
+  ---
+  duration_ms: 1.055405
+  type: 'test'
+  ...
+# Subtest: missing coordinates yield search links, not invented directions
+ok 30 - missing coordinates yield search links, not invented directions
+  ---
+  duration_ms: 0.390357
+  type: 'test'
+  ...
+# Subtest: Naver scaled WGS84 normalization and legacy-coordinate rejection
+ok 31 - Naver scaled WGS84 normalization and legacy-coordinate rejection
+  ---
+  duration_ms: 0.398479
+  type: 'test'
+  ...
+# Subtest: half coordinates and out-of-region coordinates are rejected
+ok 32 - half coordinates and out-of-region coordinates are rejected
+  ---
+  duration_ms: 0.129227
+  type: 'test'
+  ...
+# Subtest: sync conflict reducer never silently accepts an overwrite
+ok 33 - sync conflict reducer never silently accepts an overwrite
+  ---
+  duration_ms: 0.099501
+  type: 'test'
+  ...
+# Subtest: seed content has unique IDs and required phrase fields
+ok 34 - seed content has unique IDs and required phrase fields
+  ---
+  duration_ms: 0.394069
+  type: 'test'
+  ...
+# Subtest: backup validation rejects unsupported versions and missing photo references
+ok 35 - backup validation rejects unsupported versions and missing photo references
+  ---
+  duration_ms: 0.361296
+  type: 'test'
+  ...
+# Subtest: worker install precaches actual assets, without forcing activation
+ok 36 - worker install precaches actual assets, without forcing activation
+  ---
+  duration_ms: 2.170305
+  type: 'test'
+  ...
+# Subtest: failed install removes partial new cache
+ok 37 - failed install removes partial new cache
+  ---
+  duration_ms: 1.000299
+  type: 'test'
+  ...
+# Subtest: offline navigation returns cached shell without a network request
+ok 38 - offline navigation returns cached shell without a network request
+  ---
+  duration_ms: 1.11521
+  type: 'test'
+  ...
+# Subtest: worker bypasses API, POST, and third-party requests
+ok 39 - worker bypasses API, POST, and third-party requests
+  ---
+  duration_ms: 0.930513
+  type: 'test'
+  ...
+# Subtest: readiness detects a missing cached asset rather than claiming ready
+ok 40 - readiness detects a missing cached asset rather than claiming ready
+  ---
+  duration_ms: 1.563068
+  type: 'test'
+  ...
+# Subtest: activation preserves one previous app cache and other apps
+ok 41 - activation preserves one previous app cache and other apps
+  ---
+  duration_ms: 1.788584
+  type: 'test'
+  ...
+# Subtest: time-zone choices are exactly Seoul, Singapore and Cupertino
+ok 42 - time-zone choices are exactly Seoul, Singapore and Cupertino
+  ---
+  duration_ms: 2.735183
+  type: 'test'
+  ...
+# Subtest: Seoul and Singapore differ by one hour and show date rollover
+ok 43 - Seoul and Singapore differ by one hour and show date rollover
+  ---
+  duration_ms: 16.43406
+  type: 'test'
+  ...
+# Subtest: Cupertino uses PDT in summer, not a hardcoded UTC-8
+ok 44 - Cupertino uses PDT in summer, not a hardcoded UTC-8
+  ---
+  duration_ms: 0.147307
+  type: 'test'
+  ...
+# Subtest: Cupertino uses PST in winter
+ok 45 - Cupertino uses PST in winter
+  ---
+  duration_ms: 0.279878
+  type: 'test'
+  ...
+# Subtest: Seoul selected time maps to the same epoch without host-zone assumptions
+ok 46 - Seoul selected time maps to the same epoch without host-zone assumptions
+  ---
+  duration_ms: 0.801543
+  type: 'test'
+  ...
+# Subtest: Singapore wall input maps to one instant
+ok 47 - Singapore wall input maps to one instant
+  ---
+  duration_ms: 0.429354
+  type: 'test'
+  ...
+# Subtest: nonexistent Pacific spring time is rejected rather than shifted
+ok 48 - nonexistent Pacific spring time is rejected rather than shifted
+  ---
+  duration_ms: 0.281657
+  type: 'test'
+  ...
+# Subtest: repeated Pacific autumn time returns both explicitly selectable instants
+ok 49 - repeated Pacific autumn time returns both explicitly selectable instants
+  ---
+  duration_ms: 0.273073
+  type: 'test'
+  ...
+# Subtest: both repeated-hour candidates round-trip to the selected wall time
+ok 50 - both repeated-hour candidates round-trip to the selected wall time
+  ---
+  duration_ms: 0.427687
+  type: 'test'
+  ...
+# Subtest: invalid time-zone/date inputs are rejected
+ok 51 - invalid time-zone/date inputs are rejected
+  ---
+  duration_ms: 0.605597
+  type: 'test'
+  ...
+# Subtest: midnight remains 00:00, not 24:00 on the wrong date
+ok 52 - midnight remains 00:00, not 24:00 on the wrong date
+  ---
+  duration_ms: 0.173099
+  type: 'test'
+  ...
+# Subtest: date differences are relative to the selected source city
+ok 53 - date differences are relative to the selected source city
+  ---
+  duration_ms: 0.237721
+  type: 'test'
+  ...
+# Subtest: invalid dates fail closed and offsets are unambiguous
+ok 54 - invalid dates fail closed and offsets are unambiguous
+  ---
+  duration_ms: 0.176279
+  type: 'test'
+  ...
+# Subtest: checklist has twelve stable unique IDs and counts only true confirmations
+ok 55 - checklist has twelve stable unique IDs and counts only true confirmations
+  ---
+  duration_ms: 2.361603
+  type: 'test'
+  ...
+# Subtest: device confirmations cannot be restored as travel-wide completions
+ok 56 - device confirmations cannot be restored as travel-wide completions
+  ---
+  duration_ms: 0.459768
+  type: 'test'
+  ...
+# Subtest: invalid checklist metadata in backups is rejected
+ok 57 - invalid checklist metadata in backups is rejected
+  ---
+  duration_ms: 0.641109
+  type: 'test'
+  ...
+# Subtest: six local ideas have valid sources and can be saved in the existing model
+ok 58 - six local ideas have valid sources and can be saved in the existing model
+  ---
+  duration_ms: 0.932443
+  type: 'test'
+  ...
+# Subtest: stay address merge preserves PIN, room, Wi-Fi and personal notes
+ok 59 - stay address merge preserves PIN, room, Wi-Fi and personal notes
+  ---
+  duration_ms: 0.292916
+  type: 'test'
+  ...
+# Subtest: legacy stays without coordinates remain readable; partial coordinates fail
+ok 60 - legacy stays without coordinates remain readable; partial coordinates fail
+  ---
+  duration_ms: 0.277478
+  type: 'test'
+  ...
+# Subtest: stay direction links cannot contain an entry PIN
+ok 61 - stay direction links cannot contain an entry PIN
+  ---
+  duration_ms: 0.531498
+  type: 'test'
+  ...
+# Subtest: supplied seed is authenticated ciphertext, not plaintext address metadata
+ok 62 - supplied seed is authenticated ciphertext, not plaintext address metadata
+  ---
+  duration_ms: 0.44658
+  type: 'test'
+  ...
+# Subtest: owner-only setup decrypts to the supplied exact source when local source is present
+ok 63 - owner-only setup decrypts to the supplied exact source when local source is present
+  ---
+  duration_ms: 153.386773
+  type: 'test'
+  ...
+# Subtest: app contains currency swap and fixed zones, not select menus
+ok 64 - app contains currency swap and fixed zones, not select menus
+  ---
+  duration_ms: 1.623611
+  type: 'test'
+  ...
+# Subtest: forecast normalization preserves Seoul dates and caps hourly payload
+ok 65 - forecast normalization preserves Seoul dates and caps hourly payload
+  ---
+  duration_ms: 1.90386
+  type: 'test'
+  ...
+# Subtest: wrong location and timezone forecasts are rejected
+ok 66 - wrong location and timezone forecasts are rejected
+  ---
+  duration_ms: 0.429456
+  type: 'test'
+  ...
+# Subtest: Fahrenheit or mph upstream payload cannot be silently interpreted as Celsius/kmh
+ok 67 - Fahrenheit or mph upstream payload cannot be silently interpreted as Celsius/kmh
+  ---
+  duration_ms: 0.246667
+  type: 'test'
+  ...
+# Subtest: missing or invalid weather values fail before writing local storage
+ok 68 - missing or invalid weather values fail before writing local storage
+  ---
+  duration_ms: 0.395974
+  type: 'test'
+  ...
+# Subtest: unknown rain chance remains unknown, never zero percent
+ok 69 - unknown rain chance remains unknown, never zero percent
+  ---
+  duration_ms: 1.064487
+  type: 'test'
+  ...
+# Subtest: invalid weather codes and out-of-range rain chances fail closed
+ok 70 - invalid weather codes and out-of-range rain chances fail closed
+  ---
+  duration_ms: 0.328219
+  type: 'test'
+  ...
+# Subtest: saved forecast validation rejects duplicate dates and reversed high/low
+ok 71 - saved forecast validation rejects duplicate dates and reversed high/low
+  ---
+  duration_ms: 0.51649
+  type: 'test'
+  ...
+# Subtest: staleness uses old model time even when fetched again just now
+ok 72 - staleness uses old model time even when fetched again just now
+  ---
+  duration_ms: 0.229705
+  type: 'test'
+  ...
+# Subtest: no forecast and future timestamps are handled explicitly
+ok 73 - no forecast and future timestamps are handled explicitly
+  ---
+  duration_ms: 0.394581
+  type: 'test'
+  ...
+# Subtest: temperature toggle converts units instead of merely changing the suffix
+ok 74 - temperature toggle converts units instead of merely changing the suffix
+  ---
+  duration_ms: 0.476012
+  type: 'test'
+  ...
+# Subtest: weather endpoint is a fixed approximate-area request with no precise stay or GPS input
+ok 75 - weather endpoint is a fixed approximate-area request with no precise stay or GPS input
+  ---
+  duration_ms: 19.59911
+  type: 'test'
+  ...
+# Subtest: provider failures return an error, never a fake sunny success
+ok 76 - provider failures return an error, never a fake sunny success
+  ---
+  duration_ms: 0.515379
+  type: 'test'
+  ...
+# Subtest: malformed upstream data returns a controlled error
+ok 77 - malformed upstream data returns a controlled error
+  ---
+  duration_ms: 0.551191
+  type: 'test'
+  ...
+1..77
+# tests 77
+# suites 0
+# pass 77
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1437.401785
+
+> seoul-pocket@0.2.0 build
+> node scripts/build.mjs
+
+{
+  "version": "fab3593d12b89358",
+  "generatedAt": "2026-09-08T03:33:40.931Z",
+  "assets": 23,
+  "totalBytes": 149837
+}
+
+> seoul-pocket@0.2.0 check:privacy
+> node scripts/check-privacy.mjs
+
+PASS: deployment boundary inspected (27 files). Supplied exact address, coordinates and generated key are absent in plaintext.

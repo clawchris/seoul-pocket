@@ -1,39 +1,33 @@
-# 06 · Test report and known limitations
-Report date: 7 September 2026. Build timestamps in `qa/verify.log` use the execution environment's UTC clock, which is on 8 September. No performance/confidence percentage has been invented.
+# 06 · Test and delivery report · v0.2
+This report describes executed evidence, not a certification. See qa/ for raw logs. Runtime timestamps in logs are UTC and may roll into 8 September; the product/source review date is 7 September 2026.
 
 ## Executed checks
 | Check | Result | What it establishes |
 |---|---|---|
-| `npm run check` | Passed | Production JavaScript parses; required JSON parses |
-| `npm test` | 41 passed, 0 failed | Domain, Web Crypto, mocked API and generated-worker logic |
-| `npm run build` | Passed | Actual public files copied and content-hashed worker generated |
-| `tests/render_harness.py` | 12 passed | Selected actual DOM flows with explicit in-memory adapters |
-| Responsive harness widths | 320, 375, 390, 430, 768, 1280px | No horizontal overflow in the exercised Today view |
-| UI screenshots | Generated and visually inspected | Layout evidence for selected populated/empty states |
+| Syntax/JSON checks | Passed | Production JS parses and expected files validate. |
+| Node unit/contract suite | **77 passed, 0 failed, 0 skipped in this owner package** | Existing domain/crypto/API/SW checks plus 36 new timezone/weather/checklist/stay checks. |
+| Production build | Passed | Generated content-derived shell, 23 explicit cached assets, 149,837 bytes before media/audio; build fab3593d12b89358. |
+| Plaintext deployment scan | Passed, 27 static files inspected | Exact supplied address/coordinates and generated setup key absent in plaintext from dist; forbidden directory boundaries checked. Not a penetration test. |
+| DOM/UI harness | **22 passed; no unhandled page errors** | Selected actual UI flows and overflow at widths 320/390/430/768/1280. Explicit fake storage/crypto/provider adapters. |
+| Real-origin smoke attempt | **Blocked before app load** | Chromium navigation returned ERR_BLOCKED_BY_ADMINISTRATOR at localhost. No real-origin behavior was validated by this attempt. |
+| Reviewed offline audio | **Expected failure** | No reviewed pronunciation recordings supplied. This remains a release gate. |
 
-The 41 tests comprise 18 domain/content checks, 7 native Web Crypto checks, 10 mocked API/auth checks and 6 service-worker VM checks. See the named TAP output in `qa/verify.log`. The worker tests run the actual generated worker JavaScript against simulated lifecycle/cache APIs; they are not evidence that Safari has installed or retained that worker.
+## Added unit coverage
+Timezone tests cover the three fixed IDs, source-zone conversion, UTC offsets, summer/winter Pacific rules, midnight/date rollover, invalid input, the 2026 spring gap and repeated autumn hour. These execute native Intl in Node, not on iOS.
 
-The UI harness checks: Today overflow; adding starter ideas; creating a saved social find; search; phrase search/show-card; manual currency conversion; separate vault/PIN reveal; driver-card secret exclusion; dialog cleanup; unverified-audio messaging; additional viewport widths; no uncaught page errors across those flows. It uses a fake in-memory encryption adapter only to drive UI states. Actual encryption is separately tested using Web Crypto in Node. The harness must never be deployed as application code.
+Weather tests use controlled fixtures/mocked provider fetch: schema, location, units, explicit Seoul timestamp, null rain chance, future/stale/expired data, temperature conversion, fixed-upstream endpoint and provider failure. They do not prove live Cloudflare or Open-Meteo success.
 
-## Execution-environment constraint
-The available Chromium browser refused normal localhost navigation with `net::ERR_BLOCKED_BY_ADMINISTRATOR`. Browser policies were not altered. To inspect the real UI, its HTML/CSS/application logic was rendered through a page-content harness with explicit adapters. The result is not a real-origin PWA test.
+Stay tests execute real native Web Crypto to decrypt the supplied seed using the private generated key and compare it to the exact source. They also cover safe map URLs, address-only merge and coordinate-less legacy stays. Clipboard/UI/WebKit behavior is separate. The seed test deliberately skips when a public checkout lacks private/.
 
-`tests/browser_smoke.py` is provided for an unrestricted development environment. It targets the real production modules, IndexedDB and service worker. It has not been successfully executed here and must not be described as passed.
+Checklist checks validate 12 unique IDs, boolean completion, restore classification and backup rejection of malformed records. The Node tests validate pure restore rules and snapshot validation, not actual IndexedDB transaction execution.
 
-## Not yet tested or completed
-Real iPhone Safari/Home Screen behavior; actual IndexedDB persistence across termination/restart; low-storage eviction; actual quota-failure handling; service-worker install/update/rollback in a real browser; VoiceOver and text scaling; native Naver URL handoff; live Naver account credentials/results; live Frankfurter network response in the deployed app; Cloudflare deployed headers and bindings; real R2/D1 integrations; multiuser authentication/sync; physical-device backup download/restore; real Korean voice availability; human review or airplane-mode playback of 28 recordings.
+## Added UI coverage
+Finite radio choices; sourced local idea import and duplicate avoidance in the current view; user-selected must-try; search; currency swap/presets/number preservation across surfaces; exactly three timezone choices and correct previous-date display; DST gap/repeated-hour interaction; checked-item persistence in the in-memory adapter; supplied stay flow and map link; hidden PIN/driver exclusion; reviewed address merge retaining other fields; Korean cards; weather C/F, refresh failure retaining timestamp, offline label and >6-hour warning; no page-level horizontal overflow on the exercised screens.
 
-`npm run check:audio` is expected to fail because there is no reviewed recording pack. The visible application reports that offline pronunciation is not verified. This is an explicit incomplete deliverable, not a passing feature hidden behind a stub.
+The harness replaces storage, encryption, offline registration and network, and embeds the actual UI via page.set_content because browser URL navigation is administratively blocked. These adapters are never shipped in dist. Its synthetic weather/rate/test finds are not live data. The stay rendering uses the real supplied address, so QA screenshots are private. Full-page captures naturally place the fixed nav at the original viewport position; inspect viewport behavior on the actual phone.
 
-## Implemented safeguards, not guarantees
-Local commits precede success messages. A revision conflict rejects an overwrite. Backups use a coherent snapshot and restore as new copies. Encrypted envelopes authenticate their contents. Naver requests go only to a fixed upstream host. External links reject executable schemes. Cached shell requests exclude APIs and third parties. API credentials are not bundled. Failed worker installation removes the incomplete cache, and updates are not forced immediately.
+## Still unverified or unfinished
+Real browser storage persistence across termination; actual service-worker installation/offline cold restart; iPhone Home Screen behavior, keyboard and download/restore; first-entry/changed-passphrase workflow on iOS; live Naver credentials; deployed rate/weather Functions, headers, cache and quotas; actual map app handoff; reviewed Korean text/audio; independent security audit; genuine group sessions/sync/private R2 transfer. No Cloudflare deployment was created.
 
-Those safeguards reduce specific risks; they do not prove the app cannot lose data. Browser storage can be cleared/evicted, keys can be forgotten, a phone can be lost and application code can contain undiscovered defects. Independent recovery copies and physical-device release gates remain necessary.
-
-## Known current constraints
-One device owns its own edits; copying a backup is not ongoing sharing. Photos are one cover image per find; HEIC input has a clear unsupported path (export JPEG/use screenshot). Backups are capped at 20 MB. Restore preserves current settings/rate and imports a stay only when there is no existing vault. There is no portable standalone backup decryptor. Ordinary finds/photos are not encrypted locally. Offline text phrases are present; offline recordings are absent. Naver metadata import may require account-product adaptation. Structured reservations, weather, predeparture task lists and full day planning are proposed, not complete.
-
-The existing long-form `app.js` should be modularized before major features, with regression coverage. No continuous integration service or remote repository has been created. No production URL exists.
-
-## Release decision
-**Foundation ready for Codex continuation. Not certified trip-ready.** Release for the actual trip only after the installed-iPhone restart/recovery tests pass, audio expectations are satisfied, providers are validated where enabled and genuine two-device synchronization passes whenever a shared trip is required. Maintain explicit scope decisions for a local-only or text-only fallback.
+## Release interpretation
+The local update is substantially implemented and regression-tested. It is **not yet trip-ready**. Run the real-origin smoke script on an allowed test origin, then the physical-device matrix in docs/04. Do not describe checklist completion or cache presence as an automatic pass. Do not weaken the audio gate or confuse backup transfer with shared editing.

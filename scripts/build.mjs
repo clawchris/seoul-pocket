@@ -7,7 +7,7 @@ await rm(out,{recursive:true,force:true});await mkdir(out,{recursive:true});awai
 const paths=(await files(out)).filter(p=>!path.basename(p).startsWith('_')).sort();
 const hash=createHash('sha256');for(const p of paths){hash.update(path.relative(out,p));hash.update(await readFile(p));}
 const version=hash.digest('hex').slice(0,16),assets=paths.map(p=>'/'+path.relative(out,p).split(path.sep).join('/'));
-const script=`/* Generated from actual file contents. No private data or external responses enter this cache. */
+const script=`/* Generated from actual file contents. Only first-party assets, including the encrypted address seed. No live API responses. */
 const VERSION=${JSON.stringify(version)};
 const CACHE='seoul-pocket-shell-'+VERSION;
 const ASSETS=${JSON.stringify(assets)};

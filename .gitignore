@@ -6,3 +6,9 @@ dist/
 !.env.example
 qa/local-*
 .DS_Store
+
+# Owner-only setup instructions and unencrypted trip source. Never commit or deploy.
+/private/
+/docs/*.pdf
+/docs/*.docx
+/qa/*.png
