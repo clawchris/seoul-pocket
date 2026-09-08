@@ -6,14 +6,16 @@ async function files(dir){const entries=await readdir(dir,{withFileTypes:true});
 await rm(out,{recursive:true,force:true});await mkdir(out,{recursive:true});await cp(pub,out,{recursive:true});
 const paths=(await files(out)).filter(p=>!path.basename(p).startsWith('_')).sort();
 const hash=createHash('sha256');for(const p of paths){hash.update(path.relative(out,p));hash.update(await readFile(p));}
-const version=hash.digest('hex').slice(0,16),assets=paths.map(p=>'/'+path.relative(out,p).split(path.sep).join('/'));
+const version=hash.digest('hex').slice(0,16),assets=paths.map(p=>'/'+path.relative(out,p).split(path.sep).join('/')).map(p=>p==='/index.html'?'/':p);
+// Cloudflare Pages answers /index.html with a 308 to /. A cached redirected response cannot satisfy a navigation
+// request (Chrome fails it with ERR_FAILED), so the shell is cached under '/' and stored without its redirect flag.
 const script=`/* Generated from actual file contents. Only first-party assets, including the encrypted address seed. No live API responses. */
 const VERSION=${JSON.stringify(version)};
 const CACHE='seoul-pocket-shell-'+VERSION;
 const ASSETS=${JSON.stringify(assets)};
 self.addEventListener('install',event=>event.waitUntil((async()=>{
  const cache=await caches.open(CACHE);
- try{await cache.addAll(ASSETS.map(p=>new Request(p,{cache:'reload'})));}
+ try{await Promise.all(ASSETS.map(async p=>{const r=await fetch(new Request(p,{cache:'reload'}));if(!r.ok)throw new Error('Failed to cache '+p);await cache.put(p,r.redirected?new Response(await r.blob(),{status:200,headers:r.headers}):r);}));}
  catch(err){await caches.delete(CACHE);throw err;}
 })()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{
@@ -33,7 +35,7 @@ self.addEventListener('fetch',event=>{
  const url=new URL(event.request.url);
  if(event.request.method!=='GET'||url.origin!==self.location.origin||url.pathname.startsWith('/api/'))return;
  if(event.request.mode==='navigate'){
-  event.respondWith((async()=>{const c=await caches.open(CACHE);return await c.match('/index.html')||fetch(event.request);})());return;
+  event.respondWith((async()=>{const c=await caches.open(CACHE);return await c.match('/')||fetch(event.request);})());return;
  }
  if(ASSETS.includes(url.pathname))event.respondWith((async()=>{const c=await caches.open(CACHE);return await c.match(url.pathname)||fetch(event.request);})());
 });
