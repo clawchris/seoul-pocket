@@ -1,0 +1,5 @@
+# Copy to .dev.vars for Wrangler only. Never commit the real file.
+# Generate at least 32 random bytes for API_ACCESS_TOKEN. Shared proxy access only.
+API_ACCESS_TOKEN=REPLACE_WITH_RANDOM_64_HEX_CHARACTERS
+NAVER_CLIENT_ID=
+NAVER_CLIENT_SECRET=

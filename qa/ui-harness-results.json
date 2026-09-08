@@ -1,0 +1,65 @@
+{
+  "mode": "in-memory browser UI harness; not a real-origin PWA test",
+  "results": [
+    {
+      "name": "390px Today layout has no horizontal overflow",
+      "status": "passed",
+      "scope": "actual DOM, in-memory test adapters"
+    },
+    {
+      "name": "Starter ideas add to a single shared shortlist model",
+      "status": "passed",
+      "scope": "actual DOM, in-memory test adapters"
+    },
+    {
+      "name": "Add find form saves name, Korean text, neighborhood, and a social link",
+      "status": "passed",
+      "scope": "actual DOM, in-memory test adapters"
+    },
+    {
+      "name": "Search filters the saved collection",
+      "status": "passed",
+      "scope": "actual DOM, in-memory test adapters"
+    },
+    {
+      "name": "Phrase search and large Korean show-card work",
+      "status": "passed",
+      "scope": "actual DOM, in-memory test adapters"
+    },
+    {
+      "name": "Bidirectional converter uses manually entered reference rate",
+      "status": "passed",
+      "scope": "actual DOM, in-memory test adapters"
+    },
+    {
+      "name": "Vault reveal is separate from unlock (test-only encryption adapter)",
+      "status": "passed",
+      "scope": "actual DOM, in-memory test adapters"
+    },
+    {
+      "name": "Driver address card omits the entry PIN",
+      "status": "passed",
+      "scope": "actual DOM, in-memory test adapters"
+    },
+    {
+      "name": "Closing the stay dialog removes its contents from the DOM",
+      "status": "passed",
+      "scope": "actual DOM, in-memory test adapters"
+    },
+    {
+      "name": "Offline readiness does not claim unprovided audio is ready",
+      "status": "passed",
+      "scope": "actual DOM, in-memory test adapters"
+    },
+    {
+      "name": "Today layout fits 320, 375, 430, 768, and 1280px widths",
+      "status": "passed",
+      "scope": "actual DOM, in-memory test adapters"
+    },
+    {
+      "name": "No uncaught errors during the exercised UI flows",
+      "status": "passed",
+      "scope": "actual DOM, in-memory test adapters"
+    }
+  ]
+}

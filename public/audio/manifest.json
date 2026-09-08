@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "language": "ko-KR",
+  "reviewed": false,
+  "reviewer": null,
+  "clips": {},
+  "note": "No recordings are bundled. Korean device speech is a convenience fallback, not verified offline audio. Add reviewed recordings and regenerate the build before departure."
+}

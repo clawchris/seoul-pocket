@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {seal,unseal,validEnvelope} from '../public/src/crypto.js';
+const pass='long unique test passphrase';
+test('vault round-trip encrypts and decrypts Unicode data',async()=>{const data={pin:'7788#',addressKo:'서울특별시 종로구'};const x=await seal(data,pass);assert.equal(JSON.stringify(x).includes('7788'),false);assert.equal(JSON.stringify(x).includes('종로구'),false);assert.deepEqual(await unseal(x,pass),data);});
+test('wrong passphrase fails closed',async()=>{const x=await seal({pin:'test'},pass);await assert.rejects(unseal(x,'a different long passphrase'));});
+test('tampered ciphertext is rejected',async()=>{const x=await seal({pin:'test'},pass);x.cipher=(x.cipher[0]==='A'?'B':'A')+x.cipher.slice(1);await assert.rejects(unseal(x,pass));});
+test('purpose binding prevents a backup being used as a stay envelope',async()=>{const x=await seal({schema:1},pass,'backup');await assert.rejects(unseal(x,pass,'stay'));});
+test('every encryption uses a new salt and IV',async()=>{const a=await seal({},pass),b=await seal({},pass);assert.notEqual(a.salt,b.salt);assert.notEqual(a.iv,b.iv);assert.notEqual(a.cipher,b.cipher);});
+test('a short door PIN cannot be the vault passphrase',async()=>{await assert.rejects(seal({},'1234'));});
+test('hostile KDF work factors and malformed envelopes are rejected before work',()=>{assert.throws(()=>validEnvelope({v:1,algorithm:'AES-GCM',kdf:'PBKDF2-SHA256',iterations:1e12,purpose:'stay'},'stay'));});

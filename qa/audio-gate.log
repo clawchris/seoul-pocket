@@ -1,0 +1,24 @@
+
+> seoul-pocket@0.1.0 check:audio
+> node scripts/check-audio.mjs
+
+NOT FLIGHT READY: reviewed offline audio is incomplete. {
+  reviewed: false,
+  reviewer: null,
+  missing: [
+    'hello',         'thanks',
+    'excuse',        'sorry',
+    'yes',           'no',
+    'slow',          'english',
+    'no-korean',     'this',
+    'two',           'water',
+    'less-spicy',    'bill',
+    'card',          'takeout',
+    'delicious',     'allergy',
+    'here',          'subway',
+    'exit',          'stop',
+    'seoul-station', 'restroom',
+    'help',          'phone',
+    'ambulance',     'police'
+  ]
+}
