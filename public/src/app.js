@@ -102,14 +102,16 @@ function openSheet(title,content,kind='generic'){
 }
 const reducedMotion=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function closeSheet(force=false,immediate=false){
- if(!sheet.open||state.closing)return;
- if(state.formDirty&&!force&&!confirm('Discard the changes in this open form? Your saved copy will be kept.'))return;
+ if(!sheet.open)return true;
+ if(state.closing)return false;
+ if(state.formDirty&&!force&&!confirm('Discard the changes in this open form? Your saved copy will be kept.'))return false;
  state.formDirty=false;
- if(immediate||reducedMotion()||document.hidden){sheet.close();return;}
+ if(immediate||reducedMotion()||document.hidden){sheet.close();return true;}
  // Exit the way it entered: slide back down, then close. A timer guards a missing transitionend.
  state.closing=true;sheet.classList.add('closing');
  const done=()=>{if(!state.closing)return;state.closing=false;sheet.classList.remove('closing');sheet.close();};
  sheet.addEventListener('transitionend',done,{once:true});state.closeTimer=setTimeout(done,240);
+ return true;
 }
 function lockStay(){state.vault=null;state.pinVisible=false;clearTimeout(state.idle);}
 sheet.addEventListener('close',()=>{lockStay();state.modalKind='';state.formDirty=false;sheet.innerHTML='';stopSpeech();});
@@ -267,7 +269,7 @@ document.addEventListener('click',async ev=>{
  const a=b.dataset.action,id=b.dataset.id;
  try{
   switch(a){
-   case 'tab': if(sheet.open)closeSheet();state.tab=b.dataset.tab;location.hash=state.tab;render();window.scrollTo({top:0});main.focus({preventScroll:true});break;
+   case 'tab': if(sheet.open&&!closeSheet())break;state.tab=b.dataset.tab;location.hash=state.tab;render();window.scrollTo({top:0});main.focus({preventScroll:true});break;
    case 'close':closeSheet();break;
    case 'new':placeForm();break;
    case 'edit':placeForm(getPlace(id));break;
@@ -398,7 +400,7 @@ sheet.addEventListener('submit',async ev=>{
 });
 
 window.addEventListener('online',()=>{connection();maybeRefreshWeather();});window.addEventListener('offline',()=>{connection();refreshWeatherDOM();});
-window.addEventListener('hashchange',()=>{const t=location.hash.slice(1);if(tabNames[t]){state.tab=t;render();}});
+window.addEventListener('hashchange',()=>{const t=location.hash.slice(1);if(tabNames[t]){if(sheet.open&&!closeSheet()){history.replaceState(null,'','#'+state.tab);return;}state.tab=t;render();}});
 db.onOtherTabChange(()=>load().then(render).catch(err=>toast(errorMessage(err))));
 async function start(){
  try{const hash=location.hash.slice(1);if(tabNames[hash])state.tab=hash;await load();render();

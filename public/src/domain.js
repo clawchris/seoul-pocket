@@ -14,14 +14,15 @@ export function validDate(value) {
 export function cleanPlace(raw, id = raw.id) {
   const name = text(raw.name, 140); if (!name) throw new Error('Add a name first.');
   if (typeof id !== 'string' || !/^[a-zA-Z0-9_-]{1,90}$/.test(id)) throw new Error('Invalid item identifier.');
-  const sourceLinks = Array.isArray(raw.links) ? raw.links : String(raw.links || '').split(/\n/);
-  if (sourceLinks.filter(Boolean).some(u => !safeURL(u))) throw new Error('Use full http or https links.');
+  const sourceLinks = (Array.isArray(raw.links) ? raw.links : String(raw.links || '').split(/\n/)).filter(value => String(value).trim());
+  if (sourceLinks.length > 8) throw new Error('Add no more than eight links.');
+  if (sourceLinks.some(u => !safeURL(u))) throw new Error('Use full http or https links.');
   const date = text(raw.date, 10); if (date && !validDate(date)) throw new Error('Use a valid calendar date.');
   const lat = raw.lat === '' || raw.lat == null ? null : Number(raw.lat);
   const lng = raw.lng === '' || raw.lng == null ? null : Number(raw.lng);
   if ((lat === null) !== (lng === null) || (lat !== null && (!Number.isFinite(lat) || lat < 31.43 || lat > 44.35 || !Number.isFinite(lng) || lng < 122.37 || lng > 132))) throw new Error('Enter both coordinates within Korea, or leave both blank.');
   const time = text(raw.time,5); if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Use a valid time.');
-  return {id, name, korean:text(raw.korean,140), kind:KINDS.includes(raw.kind)?raw.kind:'place', neighborhood:text(raw.neighborhood,100), address:text(raw.address,350), note:text(raw.note,3000), links:sourceLinks.filter(Boolean).slice(0,8).map(safeURL), status:STATUSES.includes(raw.status)?raw.status:'saved', priority:!!raw.priority, date, time, lat, lng, photoId:text(raw.photoId,90), source:text(raw.source,200), checkedAt:validDate(raw.checkedAt)?raw.checkedAt:'', rev:Number.isSafeInteger(raw.rev)&&raw.rev>=0?raw.rev:0, updatedAt:text(raw.updatedAt,40)};
+  return {id, name, korean:text(raw.korean,140), kind:KINDS.includes(raw.kind)?raw.kind:'place', neighborhood:text(raw.neighborhood,100), address:text(raw.address,350), note:text(raw.note,3000), links:sourceLinks.map(safeURL), status:STATUSES.includes(raw.status)?raw.status:'saved', priority:!!raw.priority, date, time, lat, lng, photoId:text(raw.photoId,90), source:text(raw.source,200), checkedAt:validDate(raw.checkedAt)?raw.checkedAt:'', rev:Number.isSafeInteger(raw.rev)&&raw.rev>=0?raw.rev:0, updatedAt:text(raw.updatedAt,40)};
 }
 export function parseAmount(value) {
   const s=String(value).trim().replaceAll(',','');

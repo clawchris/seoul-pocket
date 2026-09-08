@@ -38,7 +38,7 @@ export function validateSnapshot(s){
  const ids=new Set();for(const p of s.places){cleanPlace(p);if(ids.has(p.id))throw new Error('Duplicate item in backup.');ids.add(p.id);}
  const photos=new Set();for(const p of s.photos){if(typeof p.id!=='string'||photos.has(p.id)||!(p.blob instanceof Blob)||!['image/jpeg','image/png','image/webp'].includes(p.blob.type)||p.blob.size>1024*1024)throw new Error('Invalid backup photo.');photos.add(p.id);}
  for(const p of s.places)if(p.photoId&&!photos.has(p.photoId))throw new Error('A photo is missing from the backup.');
- for(const m of s.meta){if(m.id==='stay')validEnvelope(m.value,'stay');if(m.id==='rate')validateRate(m.value);if(typeof m.id==='string'&&m.id.startsWith('check:'))validateChecklistRecord(m.id,m.value);}
+ const metaIds=new Set();for(const m of s.meta){if(!m||typeof m.id!=='string'||!m.id||m.id.length>100||metaIds.has(m.id))throw new Error('Invalid or duplicate backup metadata.');metaIds.add(m.id);if(m.id==='stay')validEnvelope(m.value,'stay');if(m.id==='rate')validateRate(m.value);if(m.id.startsWith('check:'))validateChecklistRecord(m.id,m.value);}
  return s;
 }
 /** Restores as new copies. Never overwrites existing places or an existing stay vault. */
