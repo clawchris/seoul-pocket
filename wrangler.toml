@@ -2,14 +2,12 @@ name = "seoul-pocket"
 compatibility_date = "2026-09-07"
 pages_build_output_dir = "dist"
 
-# Shared trips need the D1 binding below. Until the database exists the deployment runs local-only and
-# /api/sync, /api/trip/* answer 503 "Shared trips are not enabled on this deployment."
-# Enable: wrangler d1 create seoul-pocket; paste the id; wrangler d1 migrations apply seoul-pocket --remote; uncomment; redeploy.
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "seoul-pocket"
-# database_id = "REPLACE_WITH_REAL_DATABASE_ID"
-# migrations_dir = "migrations"
+# Shared trips. Schema changes go in migrations/ and are applied with: wrangler d1 migrations apply seoul-pocket --remote
+[[d1_databases]]
+binding = "DB"
+database_name = "seoul-pocket"
+database_id = "372fe0c5-6ba4-4841-a788-66c0acd389c8"
+migrations_dir = "migrations"
 
 # [[r2_buckets]]
 # binding = "MEDIA"
