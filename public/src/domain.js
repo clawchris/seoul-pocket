@@ -74,13 +74,7 @@ export function normalizeBuzz(raw,query){
   return {query:text(query,100),total:Number.isFinite(meta.total_count)?meta.total_count:0,retrievedAt:new Date().toISOString(),source:'Kakao blog search',
     posts:docs.slice(0,5).map(d=>({title:strip(d.title),blog:strip(d.blogname),date:typeof d.datetime==='string'?d.datetime.slice(0,10):'',url:safeURL(String(d.url||'').replace(/^http:\/\//,'https://'))})).filter(x=>x.url)};
 }
-export function normalizeTour(raw){
-  const items=raw?.response?.body?.items?.item;const list=Array.isArray(items)?items:items?[items]:[];
-  return {source:'Korea Tourism Organization TourAPI',retrievedAt:new Date().toISOString(),items:list.slice(0,12).map(i=>{
-    let lng=Number(i.mapx),lat=Number(i.mapy);if(!(lat>=31.43&&lat<=44.35&&lng>=122.37&&lng<=132))lat=lng=null;
-    return {name:text(i.title,140),address:text(i.addr1,350),distanceM:Number.isFinite(Number(i.dist))?Math.round(Number(i.dist)):null,image:safeURL(String(i.firstimage||'').replace(/^http:\/\//,'https://')),lat,lng,contentId:text(String(i.contentid||''),20),typeId:text(String(i.contenttypeid||''),4),source:'Korea Tourism Organization'};
-  }).filter(x=>x.name)};
-}
+
 export function kakaoMapLinks(place){
   if(!(Number.isFinite(place.lat)&&Number.isFinite(place.lng)))return null;
   const name=encodeURIComponent(place.korean||place.name||'');

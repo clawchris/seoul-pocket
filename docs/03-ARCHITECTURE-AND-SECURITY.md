@@ -61,7 +61,6 @@ Critical tests: first installation; a second controlled load; entirely offline r
 | `GET /api/places?q=` | Requires private proxy bearer; 1–100-character search; up to five normalized Kakao Local results |
 | `GET /api/config` | Public feature flags and the domain-restricted Kakao JavaScript key; 5-minute public cache |
 | `GET /api/buzz?q=` | Requires proxy bearer; Kakao blog search normalized to count, five recent titles and https links |
-| `GET /api/tour?lat=&lng=` | Requires proxy bearer; Korea Tourism EngService2 location list, bounded to Korea, normalized |
 | `POST /api/trip/create` | Requires proxy bearer; creates trip, owner member token, first invite; 503 without the D1 binding |
 | `POST /api/trip/join` | Public with trip id + 8-character invite code (hash compared, expiring, 12 uses); returns a member token |
 | `POST/GET /api/trip/invite` | Member token; owner rotates the invite (old code dies at once); GET lists members |

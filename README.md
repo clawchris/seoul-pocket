@@ -1,7 +1,7 @@
 # Seoul Pocket · v0.2
 An iPhone-first, local-first Seoul travel companion for Cloudflare Pages. Updated for the supplied Guui/Gwangjin stay and the owner's revised scope. Product/source review: 7 September 2026.
 
-**Deployed at https://seoul-pocket.pages.dev, local-first, with an optional encrypted shared trip.** Exact stay details are preconfigured as authenticated ciphertext. USD/KRW uses a swap button. Weather, fixed three-city time conversion, a persistent preparation checklist, Kakao place search, an app-shortcut sheet, a Kakao interactive map, local blog buzz and Korea Tourism listings are implemented. Shared trips (D1, client-side encryption, versioned sync with explicit conflicts) are built and proven against a local database; the production binding waits on a D1-capable Cloudflare token. Real iPhone testing and reviewed offline audio remain release work.
+**Deployed at https://seoul-pocket.pages.dev, local-first, with an optional encrypted shared trip.** Exact stay details are preconfigured as authenticated ciphertext. USD/KRW uses a swap button. Weather, fixed three-city time conversion, a persistent preparation checklist, Kakao place search, an app-shortcut sheet, a Kakao interactive map, and local blog buzz are implemented. Shared trips (D1, client-side encryption, versioned sync with explicit conflicts) are built and proven against a local database; the production binding waits on a D1-capable Cloudflare token. Real iPhone testing and reviewed offline audio remain release work.
 
 ## Start
 ```sh
@@ -32,7 +32,7 @@ Publish **dist/** through a Pages workflow that also deploys root-level **functi
 | Phrases | 28 written phrases and show cards; all 28 bundled as machine-generated Korean clips (Apple Yuna TTS) cached offline; native-speaker review pending; device speech is the fallback |
 | Recovery | Encrypted exports, non-overwriting restore, generated app shell/cache checks |
 | Sharing | Optional shared trip: owner creates with the proxy token, others join with a 16+8 character invite and a group passphrase; every find is sealed on the phone (AES-GCM, key from PBKDF2 over the passphrase and a server salt, record id bound as AAD); versioned compare-and-swap sync with idempotent receipts; conflicts are shown, never auto-merged; photos and the stay vault never leave the phone |
-| Map and nearby | Kakao Maps JavaScript SDK (needs `KAKAO_JS_KEY`, loaded only when the map sheet opens); Kakao blog buzz per find; Korea Tourism nearby listings (needs `KTO_SERVICE_KEY`) |
+| Map and nearby | Kakao Maps JavaScript SDK (needs `KAKAO_JS_KEY`, loaded only when the map sheet opens); Kakao blog buzz per find |
 | App shortcuts | One sheet of deep links: Naver Map, Kakao Map, Kakao T, Papago, Google Translate, Subway, Kakao Talk, with App Store fallbacks |
 
 The rejected extra feature proposals are removed from the roadmap. No separate reservation, airport-card, neighborhood-grouping, dietary/favorites or indoor-alternative systems are in scope.
