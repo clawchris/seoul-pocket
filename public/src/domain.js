@@ -70,7 +70,7 @@ export function normalizeKakao(item) {
 }
 export function normalizeBuzz(raw,query){
   const docs=Array.isArray(raw?.documents)?raw.documents:[],meta=raw?.meta||{};
-  const strip=s=>text(s,200).replace(/<[^>]*>/g,'').replaceAll('&amp;','&').replaceAll('&quot;','"').replaceAll('&lt;','<').replaceAll('&gt;','>');
+  const strip=s=>text(s,200).replace(/<[^>]*>/g,'').replace(/&#(x?[0-9a-f]+);/gi,(_,c)=>{const n=c[0]==='x'||c[0]==='X'?parseInt(c.slice(1),16):parseInt(c,10);return Number.isFinite(n)&&n>0&&n<0x110000?String.fromCodePoint(n):'';}).replace(/&(amp|lt|gt|quot|apos|nbsp);/gi,(_,k)=>({amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",nbsp:' '})[k.toLowerCase()]).replaceAll('&amp;','&').replaceAll('&quot;','"').replaceAll('&lt;','<').replaceAll('&gt;','>');
   return {query:text(query,100),total:Number.isFinite(meta.total_count)?meta.total_count:0,retrievedAt:new Date().toISOString(),source:'Kakao blog search',
     posts:docs.slice(0,5).map(d=>({title:strip(d.title),blog:strip(d.blogname),date:typeof d.datetime==='string'?d.datetime.slice(0,10):'',url:safeURL(String(d.url||'').replace(/^http:\/\//,'https://'))})).filter(x=>x.url)};
 }
