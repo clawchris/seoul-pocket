@@ -44,7 +44,6 @@ def card_names(page):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--base', default='http://127.0.0.1:8788'); ap.add_argument('--token-file', default='.dev.vars'); a = ap.parse_args()
-    token = re.search(r'API_ACCESS_TOKEN=(\S+)', Path(a.token_file).read_text()).group(1)
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
         A = new_page(browser, a.base); B = new_page(browser, a.base)
@@ -52,7 +51,7 @@ def main():
         def t01():
             A.click('[data-action="share-create"]'); f = 'form[data-form="share-create"] '
             A.fill(f + 'input[name="name"]', 'Sync test trip'); A.fill(f + 'input[name="memberName"]', 'Alpha')
-            A.fill(f + 'input[name="passphrase"]', PASS); A.fill(f + 'input[name="confirm"]', PASS); A.fill(f + 'input[name="token"]', token)
+            A.fill(f + 'input[name="passphrase"]', PASS); A.fill(f + 'input[name="confirm"]', PASS)
             A.click(f + 'button[type="submit"]'); A.wait_for_selector('[data-invite]', timeout=20000)
             invite['text'] = A.locator('[data-invite]').inner_text().strip(); assert re.fullmatch(r'[a-f0-9]{16}-[A-Z0-9]{8}', invite['text']), invite['text']
             A.click('[data-action="close"]'); expect(A.locator('#connection')).to_contain_text('Shared trip', timeout=5000)

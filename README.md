@@ -31,7 +31,7 @@ Publish **dist/** through a Pages workflow that also deploys root-level **functi
 | Local recommendations | Six opt-in Guui/east-Seoul ideas, using the existing Saved model; source links; no fabricated hours/walk times |
 | Phrases | 28 written phrases and show cards; all 28 bundled as machine-generated Korean clips (Apple Yuna TTS) cached offline; native-speaker review pending; device speech is the fallback |
 | Recovery | Encrypted exports, non-overwriting restore, generated app shell/cache checks |
-| Sharing | Optional shared trip: owner creates with the proxy token, others join with a 16+8 character invite and a group passphrase; every find is sealed on the phone (AES-GCM, key from PBKDF2 over the passphrase and a server salt, record id bound as AAD); versioned compare-and-swap sync with idempotent receipts; conflicts are shown, never auto-merged; photos and the stay vault never leave the phone |
+| Sharing | Optional shared trip: anyone on the app creates one with a name and a group passphrase, others join with a 16+8 character invite plus that passphrase; membership also unlocks place search and buzz, so no setup token is ever typed on a phone; every find is sealed on the phone (AES-GCM, key from PBKDF2 over the passphrase and a server salt, record id bound as AAD); versioned compare-and-swap sync with idempotent receipts; conflicts are shown, never auto-merged; photos and the stay vault never leave the phone |
 | Map and nearby | Kakao Maps JavaScript SDK (needs `KAKAO_JS_KEY`, loaded only when the map sheet opens); Kakao blog buzz per find |
 | App shortcuts | One sheet of deep links: Naver Map, Kakao Map, Kakao T, Papago, Google Translate, Subway, Kakao Talk, with App Store fallbacks |
 

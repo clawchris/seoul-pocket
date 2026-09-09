@@ -17,9 +17,8 @@ async function setup(){
 }
 const send=(env,bearer,body)=>sync({request:post('/api/sync',{protocol:1,since:0,mutations:[],...body},bearer),env}).then(async r=>({status:r.status,body:await r.json()}));
 
-test('trip creation needs the private token and returns an invite; joining needs only the invite',async()=>{
+test('trip creation needs only a name and salt, returns an invite; joining needs only the invite',async()=>{
  const env={API_ACCESS_TOKEN:token,DB:migrated()};
- assert.equal((await create({request:post('/api/trip/create',{name:'Seoul',salt}),env})).status,401);
  assert.equal((await create({request:post('/api/trip/create',{name:'Seoul',salt:'short'},token),env})).status,400);
  const r=await create({request:post('/api/trip/create',{name:'Seoul',salt,memberName:'Chris'},token),env}),o=await r.json();
  assert.equal(r.status,201);assert.match(o.tripId,/^[a-f0-9]{16}$/);assert.equal(o.role,'owner');assert.equal(o.invite.code.length,8);assert.equal(o.salt,salt);
@@ -78,4 +77,15 @@ test('invite rotation stops the old code at once and only the owner may rotate',
  assert.notEqual(r.invite.code,owner.invite.code);
  assert.equal((await join({request:post('/api/trip/join',{tripId:owner.tripId,code:owner.invite.code}),env})).status,403);
  assert.equal((await join({request:post('/api/trip/join',{tripId:owner.tripId,code:r.invite.code}),env})).status,201);
+});
+
+test('a member token unlocks the proxies and a stranger token does not; trip count is capped',async()=>{
+ const {authorize}=await import('../functions/_lib/http.js');
+ const {env,guest}=await setup();
+ const r=(b)=>new Request('https://trip.example/api/places?q=x',{headers:{Authorization:'Bearer '+b}});
+ assert.equal(await authorize(r(token),env),null);assert.equal(await authorize(r(guest.memberToken),env),null);assert.equal((await authorize(r('x'.repeat(40)),env)).status,401);
+ for(let i=0;i<29;i++)await env.DB.prepare("INSERT INTO trips (id,name,created_at,encryption_salt,key_version) VALUES (?,?,?,?,1)").bind('t'+i,'x','2026',salt).run();
+ assert.equal((await create({request:post('/api/trip/create',{name:'Seoul',salt}),env})).status,503);
+ const cross=new Request('https://trip.example/api/trip/create',{method:'POST',headers:{Origin:'https://evil.example','Content-Type':'application/json'},body:JSON.stringify({name:'x',salt})});
+ assert.equal((await create({request:cross,env})).status,403);
 });

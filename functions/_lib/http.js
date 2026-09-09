@@ -4,7 +4,10 @@ export async function equalSecret(a,b){const x=await digest(a),y=await digest(b)
 export async function authorize(request,env){
  const configured=env.API_ACCESS_TOKEN;
  if(!configured||configured.length<32||configured.startsWith('REPLACE_'))return json({error:'Private API is not configured.'},503);
- const h=request.headers.get('Authorization')||'';if(!h.startsWith('Bearer ')||h.length>270||!(await equalSecret(h.slice(7),configured)))return json({error:'Private API access required.'},401);
+ const h=request.headers.get('Authorization')||'';if(!h.startsWith('Bearer ')||h.length>270)return json({error:'Private API access required.'},401);
  const origin=request.headers.get('Origin');if(origin&&origin!==new URL(request.url).origin)return json({error:'Cross-origin requests are not allowed.'},403);
- return null;
+ if(await equalSecret(h.slice(7),configured))return null;
+ // A shared-trip member token also unlocks the proxies, so nobody on the trip needs the setup token.
+ if(env.DB){const {hashToken}=await import('./trip.js');const m=await env.DB.prepare('SELECT id FROM members WHERE token_hash=? AND revoked_at IS NULL').bind(await hashToken(h.slice(7))).first();if(m)return null;}
+ return json({error:'Private API access required.'},401);
 }

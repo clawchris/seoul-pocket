@@ -34,10 +34,10 @@ export async function mutationFor(place,op='put'){
  return m;
 }
 
-export async function createTrip({name,memberName,passphrase,token}){
+export async function createTrip({name,memberName,passphrase}){
  const salt=b64(crypto.getRandomValues(new Uint8Array(24)));
  const k=await deriveTripKey(passphrase,salt);
- const created=await api('/api/trip/create',{name,salt,memberName},token);
+ const created=await api('/api/trip/create',{name,salt,memberName});
  await adopt(created,k,memberName);
  return created;
 }
