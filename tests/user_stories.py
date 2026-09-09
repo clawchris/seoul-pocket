@@ -101,6 +101,14 @@ def main():
             assert '0/12' in page.locator('[data-check-progress]').first.inner_text()
             act('local-ideas'); assert sheet.locator('.card').count() == 6; close()
         story('S15', s15)
+        def s16():
+            page.goto(a.base + '#today'); page.wait_for_selector('#nav'); expect(page.locator('[data-install-card]')).to_contain_text('Home Screen')
+            page.click('[data-install-card] [data-action="install"]'); expect(page.locator('#sheet-title')).to_have_text('Add to Home Screen'); expect(page.locator('#sheet')).to_contain_text('Add to Home Screen'); assert page.locator('#sheet ol.steps li').count() == 5
+            page.click('[data-action="close"]'); page.click('[data-tab="trip"]'); expect(page.locator('main')).to_contain_text('Install on your iPhone')
+            page.click('[data-tab="today"]'); page.click('[data-install-card] [data-action="install-hide"]'); page.wait_for_timeout(200); assert page.locator('[data-install-card]').count() == 0
+            page.reload(); page.wait_for_selector('#nav'); assert page.locator('[data-install-card]').count() == 0, 'dismissal did not persist'
+            return 'card, 5-step guide, Trip link, dismissal persists'
+        story('S16', s16)
         # Saved
         def s20():
             tab('saved'); act('new'); f = sheet.locator('form[data-form=place]')

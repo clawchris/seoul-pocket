@@ -56,3 +56,5 @@ label{display:grid;gap:6px;font-size:13px;font-weight:650;margin:0 0 16px}input,
 /* Shared trip */
 .invite-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:20px;letter-spacing:.04em;word-break:break-all;font-variant-numeric:tabular-nums;background:var(--soft);border-radius:12px;padding:12px 14px;margin:12px 0}
 .tag.alert{background:#f6e1de;color:var(--danger)}
+
+.steps{padding-left:22px;margin:12px 0}.steps li{margin:10px 0;line-height:1.45}

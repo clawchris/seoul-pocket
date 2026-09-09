@@ -28,6 +28,9 @@ Food/place and visit-status choices use visible radio chips. Near our stay opens
 ## Predeparture checklist
 Two groups, twelve large checkbox rows, saved X/12 progress, links to relevant existing tools. Check only after doing the task. Saving an item must complete before claiming success; on failure restore the previous visual state. User confirmations are not automatic proof of readiness. Device-specific confirmations are not transferable through backup. General preparation confirmations may import only into previously missing keys.
 
+## Home Screen install (9 September 2026)
+A Today card, shown only when the app is running in a browser tab and not yet dismissed, explains why the Home Screen icon matters and opens a five-step Safari guide (Share, Add to Home Screen, Add). The same guide is reachable from Trip → Install on your iPhone and from the checklist item. The guide says plainly that the tab and the icon share one storage on the phone, and what to do when the option is missing inside an in-app browser. Dismissal is per device.
+
 ## Content rules and failure language
 Use “Saved on this device, not shared,” not a cloud icon suggesting synchronization. In a shared trip the status line says “Shared trip · synced 3 min ago”, “… 2 waiting to send”, “… 1 to resolve” or “… signed out”; each is computed from local outbox, conflict and acknowledgement state, never from a request having been sent. Conflicts are worded as “Two versions of this find” with “Keep mine” and “Use shared”; the app never says merged. “Connection detected” does not mean provider reachable. “Cached” is not “tested offline.” “Device speech” is not “reviewed offline audio.” “Reference rate” is not final card settlement. Distinguish model/fetch time, user-supplied/verified information and an area suggestion/confirmed booking.
 

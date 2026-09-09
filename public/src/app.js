@@ -29,7 +29,7 @@ const action=(name,id='')=>`data-action="${name}" ${id?`data-id="${e(id)}"`:''}`
 async function load(){
  [state.places,state.rate,state.vaultExists]=await Promise.all([db.all(),db.getMeta('rate'),db.getMeta('stay').then(Boolean)]);
  const prefs=await db.getMeta('prefs');if(prefs)state.prefs={...state.prefs,...prefs};
- state.trip=(await db.getMeta('trip'))||null;
+ state.trip=(await db.getMeta('trip'))||null;state.installHidden=!!(await db.getMeta('installHidden'));
  const [toolPrefs,weather,checks]=await Promise.all([db.getMeta('toolPrefs'),db.getMeta('weather'),Promise.all(CHECKLIST.map(x=>db.getMeta(checklistMetaKey(x.id))))]);
  if(toolPrefs){state.toolPrefs.currencyFrom=toolPrefs.currencyFrom==='USD'?'USD':'KRW';state.toolPrefs.weatherUnit=toolPrefs.weatherUnit==='F'?'F':'C';}
  try{state.weather=weather?validateForecast(weather):null;}catch{state.weather=null;state.weatherError='The saved forecast could not be read. Refresh online; other trip data is unchanged.';}
@@ -62,6 +62,7 @@ function todayView(){
  <button class="world-clock-strip spacer" ${action('timezone')} aria-label="Compare Seoul, Singapore and Cupertino time"><strong class="strip-title">Seoul, Singapore and Cupertino right now ${icon('arrow')}</strong><span class="world-clock-cells" data-live-clocks>${clockCells()}</span></button>
  <div class="row between spacer"><h2>Before you leave</h2>${button(`<span data-check-progress>${progress.done}/${progress.total} checked</span> ${icon('arrow')}`,'checklist','secondary')}</div>
  ${state.update?`<div class="notice neutral spacer">An app update is ready. ${button('Review & update','update','text-button')}</div>`:''}
+ ${installCard()}
  <div class="section-head"><h2>Today’s stops</h2><span class="caption">${e(today)} · Seoul</span></div>
  ${planned.length?`<div class="places-grid">${planned.map(placeCard).join('')}</div>`:`<div class="empty"><h3>No stops planned for today.</h3><p>Keep it flexible. Save an idea, then choose a date when you are ready.</p>${button('Saved finds','tab','secondary','data-tab="saved"')}</div>`}
  <div class="card spacer"><h3>Ideas around your stay</h3><p class="small muted">Jayang market, Kondae food, Seongsu cafés, and east-Seoul green spaces.</p>${button('Browse local ideas','local-ideas','secondary full')}</div>`;
@@ -100,7 +101,7 @@ function refreshConverterDOM(){document.querySelectorAll('[data-converter]').for
 function rateNote(){return state.rate?`${state.rate.source==='manual'?'Manual rate':'Frankfurter reference'}: 1 USD = ${Number(state.rate.rate).toLocaleString('en-US',{maximumFractionDigits:4})} KRW. Dated ${e(state.rate.date)}.${staleRate(state.rate)?' More than 72 hours old; refresh before relying on it.':''}`:'No exchange rate has been saved yet. Refresh online, or enter a rate from a source you trust.';}
 function toolLink(title,sub,ico,act){return `<button class="tool-link" ${action(act)}><span class="icon-tile">${icon(ico)}</span><div><strong>${title}</strong><span>${sub}</span></div>${icon('arrow')}</button>`;}
 function tripView(){const progress=checklistProgress(state.checklist);if(!state.config)ensureConfig().then(()=>{if(state.tab==='trip')render();}).catch(()=>{});return `${pageTop(e(state.prefs.name||'Our Seoul trip'),'Your stay, backups, and preparation.')}<div class="tool-columns"><section><div class="card"><div class="row between"><h2>Our Guui stay</h2>${icon('lock')}</div><p class="small muted">${state.vaultExists?'Encrypted on this device. Unlock for the address, Naver directions and entry details.':'Your supplied address and coordinates are preconfigured in an encrypted seed. Use the private setup passphrase to load them on this phone.'}</p>${button(state.vaultExists?'Unlock stay':'Set up our stay','stay','primary full')}</div>
- <div class="section-head"><h2>Trip settings</h2></div>${toolLink('Dates & trip name',state.prefs.start?e(state.prefs.start+' to '+state.prefs.end):'No travel dates set','clock','preferences')}${toolLink('Encrypted backup','Save a recovery copy outside this app','download','backup')}${toolLink('Restore a backup','Import new copies; keep existing data','trip','restore')}</section>
+ <div class="section-head"><h2>Trip settings</h2></div>${toolLink('Install on your iPhone','Add to Home Screen from Safari','external','install')}${toolLink('Dates & trip name',state.prefs.start?e(state.prefs.start+' to '+state.prefs.end):'No travel dates set','clock','preferences')}${toolLink('Encrypted backup','Save a recovery copy outside this app','download','backup')}${toolLink('Restore a backup','Import new copies; keep existing data','trip','restore')}</section>
  <section><div class="card"><h2>Predeparture checklist</h2><p class="small"><span data-check-progress>${progress.done}/${progress.total} checked</span> · on this device</p><p class="caption">These are your confirmations, not an automatic guarantee that the app is trip-ready.</p>${button('Open checklist','checklist','primary full')}</div><details class="spacer"><summary>Offline checks & connections</summary>${toolLink('Technical offline check','Cache presence is not a cold-restart test','download','readiness')}${toolLink('Place search connection','Optional Kakao place search via the server','search','connection')}${toolLink('Print a fallback card','No entry PIN or Wi-Fi password','trip','print')}</details>${shareCard()}</section></div>`;}
 function shareCard(){
  const t=state.trip,s=sync.status;
@@ -237,6 +238,9 @@ window.addEventListener('afterprint',()=>{$('#print-panel').replaceChildren();})
 document.addEventListener('visibilitychange',()=>{if(document.hidden)$('#print-panel').replaceChildren();});
 
 const proxyToken=()=>state.apiToken||state.trip?.memberToken||'';
+const installed=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+function installCard(){if(installed()||state.installHidden)return '';return `<section class="notice neutral spacer" data-install-card><strong>Put Seoul Pocket on your Home Screen.</strong><p class="small">From the Home Screen icon it opens full screen, keeps working offline and stays signed in to the shared trip.</p><div class="row wrap">${button('Show me how','install','primary')}${button('Not now','install-hide','text-button')}</div></section>`;}
+function installSheet(){openSheet('Add to Home Screen',`<p class="sheet-subtitle">${installed()?'You are already using the Home Screen app.':'Takes about ten seconds in Safari.'}</p><ol class="steps"><li>Open <strong>seoul-pocket.pages.dev</strong> in <strong>Safari</strong>, not in a browser inside another app.</li><li>Tap the <strong>Share</strong> button, the square with an arrow pointing up, at the bottom of the screen.</li><li>Scroll the list and tap <strong>Add to Home Screen</strong>.</li><li>Tap <strong>Add</strong> in the top right. The icon says Seoul Pocket.</li><li>Open it from that icon from now on. Saved finds, the stay vault and the shared trip on the Safari tab and on the icon are the same data, because both live in this iPhone's Safari storage.</li></ol><p class="caption spacer">If Add to Home Screen is missing, you are in an in-app browser. Tap the compass or “Open in Safari” first.</p>`,'install');}
 function getPlace(id){const p=state.places.find(p=>p.id===id);if(!p)throw new Error('That saved find is no longer available.');return p;}
 async function copy(value){try{await navigator.clipboard.writeText(value);toast('Copied. Clipboard content may remain until replaced.');}catch{openSheet('Copy this text',`<p class="sheet-subtitle">Clipboard access was unavailable. Select and copy the text below.</p><textarea readonly rows="5">${e(value)}</textarea>`,'copy');}}
 async function refreshRate(){
@@ -374,6 +378,8 @@ document.addEventListener('click',async ev=>{
    case 'checklist':checklistSheet();break;
    case 'speak-tab':case 'tools-tab':closeSheet(true);state.tab=a==='speak-tab'?'speak':'tools';location.hash=state.tab;render();break;
    case 'readiness':await readiness();break;
+   case 'install':installSheet();break;
+   case 'install-hide':state.installHidden=true;await db.setMeta('installHidden',true);render();break;
    case 'persist':toast(await requestPersistence()?'Persistent storage granted. Still keep backups.':'Persistence was not granted. Keep a separate backup.');await readiness();break;
    case 'backup':backupSheet();break;
    case 'restore':restoreSheet();break;
