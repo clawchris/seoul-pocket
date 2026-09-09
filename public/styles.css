@@ -46,3 +46,13 @@ label{display:grid;gap:6px;font-size:13px;font-weight:650;margin:0 0 16px}input,
  .quick-card:active,.tool-link:active,.primary:active,.secondary:active,.danger-button:active,.link-button:active,.icon-button:active,.text-button:active,.chip:active,.preset button:active,.currency-toggle:active,.world-clock-strip:active,.header-help:active,.emergency-grid a:active,.place-main:active{transform:none}
  #toast{transition:opacity 150ms ease;transform:translateX(-50%)!important}
 }
+
+/* Map, apps, buzz */
+.kakao-map{width:100%;height:min(62vh,520px);border-radius:18px;overflow:hidden;background:var(--soft);display:grid;place-items:center}.map-status{color:var(--muted)}
+.map-label{background:#fff;border:1px solid var(--line);border-radius:10px;padding:3px 8px;font-size:12px;font-weight:650;color:var(--ink);white-space:nowrap;box-shadow:0 2px 8px #152d2a14}.map-label.stay{background:var(--green);color:#fff;border-color:var(--green)}
+.app-card h3{margin:0}.app-card .row.wrap a{min-height:48px;display:inline-flex;align-items:center;padding:10px 16px;border-radius:14px;text-decoration:none;font-weight:650}.app-card a.primary{background:var(--green);color:#fff}
+.buzz h3{margin-top:18px}
+
+/* Shared trip */
+.invite-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:20px;letter-spacing:.04em;word-break:break-all;font-variant-numeric:tabular-nums;background:var(--soft);border-radius:12px;padding:12px 14px;margin:12px 0}
+.tag.alert{background:#f6e1de;color:var(--danger)}

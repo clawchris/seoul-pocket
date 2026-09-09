@@ -1,4 +1,4 @@
--- Foundation only. Not used by the local-only UI or the intentionally disabled /api/sync.
+-- Shared-trip schema used by /api/trip/* and /api/sync. Payloads are client-encrypted; the server stores ciphertext, versions and tombstones.
 PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS trips (
  id TEXT PRIMARY KEY,

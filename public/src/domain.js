@@ -1,5 +1,6 @@
 /** Pure domain rules, shared by the UI and tests. No network or browser globals. */
-export const SCHEMA = 1;
+export const SCHEMA = 2;
+export const BACKUP_SCHEMAS = [1,2];
 export const STATUSES = ['saved', 'planned', 'visited', 'skipped'];
 export const KINDS = ['food', 'place'];
 export function text(value, max = 500) { return String(value ?? '').trim().slice(0, max); }
@@ -21,7 +22,7 @@ export function cleanPlace(raw, id = raw.id) {
   const lng = raw.lng === '' || raw.lng == null ? null : Number(raw.lng);
   if ((lat === null) !== (lng === null) || (lat !== null && (!Number.isFinite(lat) || lat < 31.43 || lat > 44.35 || !Number.isFinite(lng) || lng < 122.37 || lng > 132))) throw new Error('Enter both coordinates within Korea, or leave both blank.');
   const time = text(raw.time,5); if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Use a valid time.');
-  return {id, name, korean:text(raw.korean,140), kind:KINDS.includes(raw.kind)?raw.kind:'place', neighborhood:text(raw.neighborhood,100), address:text(raw.address,350), note:text(raw.note,3000), links:sourceLinks.filter(Boolean).slice(0,8).map(safeURL), status:STATUSES.includes(raw.status)?raw.status:'saved', priority:!!raw.priority, date, time, lat, lng, photoId:text(raw.photoId,90), source:text(raw.source,200), checkedAt:validDate(raw.checkedAt)?raw.checkedAt:'', rev:Number.isSafeInteger(raw.rev)&&raw.rev>=0?raw.rev:0, updatedAt:text(raw.updatedAt,40)};
+  return {id, name, korean:text(raw.korean,140), kind:KINDS.includes(raw.kind)?raw.kind:'place', neighborhood:text(raw.neighborhood,100), address:text(raw.address,350), note:text(raw.note,3000), links:sourceLinks.filter(Boolean).slice(0,8).map(safeURL), status:STATUSES.includes(raw.status)?raw.status:'saved', priority:!!raw.priority, date, time, lat, lng, photoId:text(raw.photoId,90), source:text(raw.source,200), checkedAt:validDate(raw.checkedAt)?raw.checkedAt:'', rev:Number.isSafeInteger(raw.rev)&&raw.rev>=0?raw.rev:0, updatedAt:text(raw.updatedAt,40), serverVersion:Number.isSafeInteger(raw.serverVersion)&&raw.serverVersion>=0?raw.serverVersion:0, dirty:!!raw.dirty, conflict:!!raw.conflict};
 }
 export function parseAmount(value) {
   const s=String(value).trim().replaceAll(',','');
@@ -66,6 +67,24 @@ export function normalizeKakao(item) {
   const links=[item.place_url].map(u=>safeURL(String(u||'').replace(/^http:\/\//,'https://'))).filter(Boolean);
   const category=strip((item.category_name||'').split('>').pop().trim());
   return {name:strip(item.place_name),korean:strip(item.place_name),address:strip(item.road_address_name||item.address_name),category,phone:strip(item.phone||''),links,lat,lng,source:'Kakao Local'};
+}
+export function normalizeBuzz(raw,query){
+  const docs=Array.isArray(raw?.documents)?raw.documents:[],meta=raw?.meta||{};
+  const strip=s=>text(s,200).replace(/<[^>]*>/g,'').replaceAll('&amp;','&').replaceAll('&quot;','"').replaceAll('&lt;','<').replaceAll('&gt;','>');
+  return {query:text(query,100),total:Number.isFinite(meta.total_count)?meta.total_count:0,retrievedAt:new Date().toISOString(),source:'Kakao blog search',
+    posts:docs.slice(0,5).map(d=>({title:strip(d.title),blog:strip(d.blogname),date:typeof d.datetime==='string'?d.datetime.slice(0,10):'',url:safeURL(String(d.url||'').replace(/^http:\/\//,'https://'))})).filter(x=>x.url)};
+}
+export function normalizeTour(raw){
+  const items=raw?.response?.body?.items?.item;const list=Array.isArray(items)?items:items?[items]:[];
+  return {source:'Korea Tourism Organization TourAPI',retrievedAt:new Date().toISOString(),items:list.slice(0,12).map(i=>{
+    let lng=Number(i.mapx),lat=Number(i.mapy);if(!(lat>=31.43&&lat<=44.35&&lng>=122.37&&lng<=132))lat=lng=null;
+    return {name:text(i.title,140),address:text(i.addr1,350),distanceM:Number.isFinite(Number(i.dist))?Math.round(Number(i.dist)):null,image:safeURL(String(i.firstimage||'').replace(/^http:\/\//,'https://')),lat,lng,contentId:text(String(i.contentid||''),20),typeId:text(String(i.contenttypeid||''),4),source:'Korea Tourism Organization'};
+  }).filter(x=>x.name)};
+}
+export function kakaoMapLinks(place){
+  if(!(Number.isFinite(place.lat)&&Number.isFinite(place.lng)))return null;
+  const name=encodeURIComponent(place.korean||place.name||'');
+  return {look:`kakaomap://look?p=${place.lat},${place.lng}`,route:`kakaomap://route?ep=${place.lat},${place.lng}&by=PUBLICTRANSIT`,web:`https://map.kakao.com/link/map/${name},${place.lat},${place.lng}`};
 }
 export function resolveSync(local, remote) {
   if (!local) return {action:'accept-remote',record:remote};

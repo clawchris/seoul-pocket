@@ -28,3 +28,22 @@ export async function unseal(envelope,passphrase,purpose='stay') {
   } catch {throw new Error('Could not unlock. Check your passphrase or restore an undamaged backup.');}
 }
 export { b64, unb64 };
+/** Shared-trip key: derived once from the group passphrase and the trip's server salt, stored as a non-extractable CryptoKey. */
+export async function deriveTripKey(passphrase,saltB64){
+  if(typeof passphrase!=='string'||passphrase.length<12||passphrase.length>256)throw new Error('Use a trip passphrase of 12 to 256 characters.');
+  const salt=unb64(saltB64);if(salt.length<16)throw new Error('Invalid trip salt.');
+  return keyFor(passphrase,salt,ITERATIONS);
+}
+export function tripAAD(tripId,recordId,kind='place'){return enc.encode(`seoul-pocket:v1:trip:${tripId}:${recordId}:${kind}`);}
+/** Compact envelope for shared records: "v1.<iv>.<cipher>". The record identity is bound through AAD, so a ciphertext cannot be moved to another record or trip. */
+export async function sealShared(value,key,aad){
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:aad},key,enc.encode(JSON.stringify(value)));
+  return `v1.${b64(iv)}.${b64(new Uint8Array(cipher))}`;
+}
+export async function openShared(envelope,key,aad){
+  if(typeof envelope!=='string'||envelope.length>96*1024)throw new Error('Invalid shared record.');
+  const [v,iv,cipher]=envelope.split('.');if(v!=='v1'||!iv||!cipher)throw new Error('Invalid shared record.');
+  try{const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(iv),additionalData:aad},key,unb64(cipher));return JSON.parse(dec.decode(plain));}
+  catch{throw new Error('A shared record could not be decrypted. The trip passphrase on this phone may differ from the group’s.');}
+}

@@ -2,8 +2,9 @@ name = "seoul-pocket"
 compatibility_date = "2026-09-07"
 pages_build_output_dir = "dist"
 
-# Baseline Pages deployment needs no D1/R2 binding.
-# Add bindings only after implementing and testing authenticated shared sync.
+# Shared trips need the D1 binding below. Until the database exists the deployment runs local-only and
+# /api/sync, /api/trip/* answer 503 "Shared trips are not enabled on this deployment."
+# Enable: wrangler d1 create seoul-pocket; paste the id; wrangler d1 migrations apply seoul-pocket --remote; uncomment; redeploy.
 # [[d1_databases]]
 # binding = "DB"
 # database_name = "seoul-pocket"

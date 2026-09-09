@@ -30,5 +30,8 @@ Controls name the action ("Encrypt and save stay", "Import without overwriting")
 ## Refused defaults
 No page-load choreography, no section reveals, no hover-only affordances, no pulsing indicators, no gradient text, no glass as decoration, no modal for anything a card can carry inline, no select elements for choices with fewer than five options.
 
+## Shared trip surfaces (9 September 2026)
+The invite is one monospace token in a soft tile so it can be read aloud or copied whole. Sync state is a sentence in the status line and on the Trip card, never a spinner. A conflict is a warm notice at the top of the find with two equal buttons; the card gets a "Needs a decision" tag. No animation was added.
+
 ## Still open
 The hero eyebrow was removed after the design audit; the clock line now carries the neighborhood. Remaining `.eyebrow` uses are plain 13px labels, not uppercase kickers. A native-speaker pass on the 28 audio clips and Korean phrase text is pending and is the only remaining content review before the trip.

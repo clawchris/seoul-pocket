@@ -1,7 +1,7 @@
 # Seoul Pocket · v0.2
 An iPhone-first, local-first Seoul travel companion for Cloudflare Pages. Updated for the supplied Guui/Gwangjin stay and the owner's revised scope. Product/source review: 7 September 2026.
 
-**Working local implementation, not a deployed or trip-ready group service.** Exact stay details are preconfigured as authenticated ciphertext. USD/KRW uses a swap button. Weather, fixed three-city time conversion and a persistent preparation checklist are implemented. Real iPhone testing, live provider integration, reviewed offline audio and genuine group sync remain release work.
+**Deployed at https://seoul-pocket.pages.dev, local-first, with an optional encrypted shared trip.** Exact stay details are preconfigured as authenticated ciphertext. USD/KRW uses a swap button. Weather, fixed three-city time conversion, a persistent preparation checklist, Kakao place search, an app-shortcut sheet, a Kakao interactive map, local blog buzz and Korea Tourism listings are implemented. Shared trips (D1, client-side encryption, versioned sync with explicit conflicts) are built and proven against a local database; the production binding waits on a D1-capable Cloudflare token. Real iPhone testing and reviewed offline audio remain release work.
 
 ## Start
 ```sh
@@ -31,16 +31,19 @@ Publish **dist/** through a Pages workflow that also deploys root-level **functi
 | Local recommendations | Six opt-in Guui/east-Seoul ideas, using the existing Saved model; source links; no fabricated hours/walk times |
 | Phrases | 28 written phrases and show cards; all 28 bundled as machine-generated Korean clips (Apple Yuna TTS) cached offline; native-speaker review pending; device speech is the fallback |
 | Recovery | Encrypted exports, non-overwriting restore, generated app shell/cache checks |
-| Sharing | D1/conflict foundation only; /api/sync intentionally returns 501 after authentication |
+| Sharing | Optional shared trip: owner creates with the proxy token, others join with a 16+8 character invite and a group passphrase; every find is sealed on the phone (AES-GCM, key from PBKDF2 over the passphrase and a server salt, record id bound as AAD); versioned compare-and-swap sync with idempotent receipts; conflicts are shown, never auto-merged; photos and the stay vault never leave the phone |
+| Map and nearby | Kakao Maps JavaScript SDK (needs `KAKAO_JS_KEY`, loaded only when the map sheet opens); Kakao blog buzz per find; Korea Tourism nearby listings (needs `KTO_SERVICE_KEY`) |
+| App shortcuts | One sheet of deep links: Naver Map, Kakao Map, Kakao T, Papago, Google Translate, Subway, Kakao Talk, with App Store fallbacks |
 
 The rejected extra feature proposals are removed from the roadmap. No separate reservation, airport-card, neighborhood-grouping, dietary/favorites or indoor-alternative systems are in scope.
 
 ## Repository map
-public/ is the only static build input. functions/ holds Pages endpoints. scripts/ builds, previews, checks privacy and optionally reseals a supplied stay. tests/ contains Node tests, a UI-only harness and an unpassed real-origin smoke script. migrations/ is future shared storage, not a local-mode requirement. docs/ contains the full specifications and evidence. private/ contains owner-only material; qa/ contains private screenshots and logs.
+public/ is the only static build input. functions/ holds Pages endpoints. scripts/ builds, previews, checks privacy and optionally reseals a supplied stay. tests/ contains Node tests, a UI-only harness and an unpassed real-origin smoke script. migrations/ is the D1 schema for shared trips (apply with `wrangler d1 migrations apply seoul-pocket --remote` once the database exists); local-only use needs no database. docs/ contains the full specifications and evidence. private/ contains owner-only material; qa/ contains private screenshots and logs.
 
 ## Verification commands
 ```sh
-npm run verify                    # 77 Node checks + syntax + build + plaintext deployment scan
+npm run verify                    # Node checks (crypto, domain, API proxies, sync server over node:sqlite) + syntax + build + plaintext deployment scan
+wrangler pages dev dist -c wrangler.local.toml   # Functions with a local D1; then python tests/sync_stories.py --base http://127.0.0.1:8788 --token-file .dev.vars
 npm run check:audio               # passes with a warning: clips exist but are machine-generated until a Korean speaker sets reviewed/reviewer
 python tests/render_harness.py    # requires separate Python Playwright + /usr/bin/chromium
 python tests/browser_smoke.py --base http://localhost:4173

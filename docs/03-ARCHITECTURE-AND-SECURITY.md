@@ -59,7 +59,13 @@ Critical tests: first installation; a second controlled load; entirely offline r
 | `GET /api/health` | Static service status; no private details |
 | `GET /api/rates` | Fixed USD/KRW reference endpoint, validated response, useful 502 failure |
 | `GET /api/places?q=` | Requires private proxy bearer; 1–100-character search; up to five normalized Kakao Local results |
-| `POST /api/sync` | Requires private proxy bearer, then intentionally 501; no writes |
+| `GET /api/config` | Public feature flags and the domain-restricted Kakao JavaScript key; 5-minute public cache |
+| `GET /api/buzz?q=` | Requires proxy bearer; Kakao blog search normalized to count, five recent titles and https links |
+| `GET /api/tour?lat=&lng=` | Requires proxy bearer; Korea Tourism EngService2 location list, bounded to Korea, normalized |
+| `POST /api/trip/create` | Requires proxy bearer; creates trip, owner member token, first invite; 503 without the D1 binding |
+| `POST /api/trip/join` | Public with trip id + 8-character invite code (hash compared, expiring, 12 uses); returns a member token |
+| `POST/GET /api/trip/invite` | Member token; owner rotates the invite (old code dies at once); GET lists members |
+| `POST /api/sync` | Member token; `{protocol:1, since, mutations[≤25]}`; versioned compare-and-swap, tombstones, idempotent receipts, paginated change stream |
 
 The preview server does not execute these Functions. Mocked-fetch tests check their code, not live upstream compatibility.
 
@@ -67,7 +73,18 @@ Place search uses Kakao Local keyword search with the `KAKAO_REST_API_KEY` secre
 
 Rates use the fixed Frankfurter v2 endpoint with base USD and quote KRW, bounded timeout, validation and a dated local fallback [S15]. A rate reference has no payment-settlement guarantee. Provider failures do not erase an existing rate. Add abuse limiting to public rate refresh and authorized Kakao place search before opening production endpoints broadly.
 
-## 8. Proposed group sharing: complete before enabling
+## 8. Shared trips as implemented (9 September 2026)
+The design below was implemented with these decisions. Membership is a per-device member token (32 random bytes, only its SHA-256 stored) sent as a Bearer header; it lives in IndexedDB like a session cookie and is cleared by "Leave on this phone". Trip creation is gated by the owner's proxy token so the public database cannot be filled by strangers; joining needs only the invite, which is `tripId-CODE`, hashed with the trip id before storage, valid 30 days and 12 uses, and replaced entirely when the owner rotates it. Roles are owner and editor; viewer exists in the schema and is refused writes but no UI creates one.
+
+Encryption is a per-trip AES-GCM key derived on the phone with PBKDF2 (600k iterations) from the group passphrase and a random 24-byte salt the creating phone generated and the server stores. The passphrase never travels; a wrong passphrase on a joiner surfaces as "could not be decrypted" and nothing unreadable is stored as a find. Each record is `v1.<iv>.<ciphertext>` with AAD `seoul-pocket:v1:trip:<tripId>:<recordId>:place`, so a ciphertext cannot be moved between records or trips. The server sees record ids, versions, sizes and timing only. Photos and the stay vault are never uploaded. Key rotation is not implemented; a compromised passphrase means creating a new trip.
+
+Client state: `outbox` (one entry per record, newest write wins, written in the same IndexedDB transaction as the place), `conflicts` (the remote copy and version, kept beside the untouched local copy) and per-place `serverVersion`, `dirty`, `conflict`. Acknowledgements clear dirty only when the acknowledged local revision is still current, and rebase any newer queued write onto the acknowledged version. Remote changes overwrite only clean local copies; a dirty local copy becomes a conflict. Resolution is explicit: "Keep mine" re-queues the local copy on top of the server version, "Use shared" adopts the remote copy. Deletes are tombstones and delete the local copy only when it is clean. Sync runs on start, reconnect, foreground, 800 ms after a local write, every 45 s while visible, and on "Sync now"; one exchange at a time.
+
+Server: D1 tables `trips`, `members`, `records`, `changes`, `mutation_receipts`, `invites`. A put or delete is accepted only when `baseVersion` equals the current version; the UPDATE carries `AND version=?` and a zero-row result is reported as a conflict, so a lost race never produces a false receipt. The receipt stores a request hash and the exact response, so a retry gets the same answer and a reused id with different content is refused. Responses page the change stream 200 at a time with a cursor. Tests: `tests/sync.test.mjs` runs the real Functions over a node:sqlite stand-in for D1; `tests/sync_stories.py` drives two Chromium contexts against `wrangler pages dev` with a local D1 through create, join, concurrent edit, both resolutions, delete, wrong passphrase, invite rotation and leave.
+
+Not done, on purpose: sessions as HttpOnly cookies (the token header is simpler for a PWA and the origin check still applies), key rotation, member removal, viewer UI, R2 photos, rate limiting at the edge (dashboard setting, see docs/04).
+
+## 8a. Original sharing design (kept for reference)
 ### Membership and access
 Use owner/editor/viewer roles. The server derives allowed trip IDs from authenticated membership, never trusts a body field alone. Supply one-use expiring invites; keep invite secrets out of query strings and logs. A URL fragment may carry the initial secret, but the client must clear it immediately and exchange it over HTTPS. Store only hashes of high-entropy invitation/session secrets. Require owner confirmation for membership management.
 

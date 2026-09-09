@@ -20,7 +20,14 @@ Exit: live success and error evidence on actual staging URL. No integration is c
 ## Stage C · finish reliable pronunciation
 Supply permitted audio recordings for all 28 phrase IDs, fill the existing manifest/review fields, have Korean text/phonetics/audio reviewed and rebuild. Run npm run check:audio. Test each needed phrase in airplane mode on the oldest traveler iPhone. Do not weaken the test or call device TTS equivalent. A consciously accepted text-only scope must be explicit.
 
-## Stage D · genuine sharing, only if required
+## Stage C2 · enable the shared trip in production (owner inputs)
+1. Cloudflare API token with D1 edit (Workers scripts and D1 permissions) stored on work-claw with `~/set-seoul-secret.sh CLOUDFLARE_D1_TOKEN`.
+2. `wrangler d1 create seoul-pocket`, paste the id into wrangler.toml, uncomment the `[[d1_databases]]` block, `wrangler d1 migrations apply seoul-pocket --remote`, redeploy. `/api/config` then reports `sync:true` and the Trip tab offers Create and Join.
+3. Kakao JavaScript key from the same Kakao app via `~/set-seoul-secret.sh KAKAO_JS_KEY`, with `https://seoul-pocket.pages.dev` registered under Platform → Web in the Kakao console; the map sheet reports "not configured" until then.
+4. Optional Korea Tourism key from data.go.kr via `~/set-seoul-secret.sh KTO_SERVICE_KEY`.
+5. Run `python tests/sync_stories.py --base https://seoul-pocket.pages.dev --token-file <proxy token file>` before telling anyone to join.
+
+## Stage D · genuine sharing, only if required (superseded by Stage C2; kept for the original reasoning)
 The original “we” suggests multiple users; confirm whether independent phone copies are acceptable or shared edits are essential. /api/sync remains a 501 placeholder. The full versioned protocol is in docs/03. Implement per-member permissions, secure sessions, invitations, encrypted shared payloads, private media and atomic local outbox, server versions, receipts, tombstones, cursors and explicit conflict resolution. Test simultaneous offline edits, lost acknowledgements, retries and revoked members. Preserve local-only mode and do not sync device-readiness confirmations as shared completion.
 
 ## Stage E · physical iPhone acceptance matrix
