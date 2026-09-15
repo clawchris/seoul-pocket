@@ -78,7 +78,8 @@ def main():
             assert hrefs == ['tel:112','tel:119','tel:1330'], hrefs; close()
         story('S05', s05)
         def s10():
-            h = page.locator('.hero').inner_text(); assert 'KST' in h and 'Trip dates not set' in h
+            h = page.locator('.hero').inner_text(); assert 'KST' in h and 'Gwangjin' in h
+            assert 'Trip dates not set' in h or re.search(r'\d{4}-\d{2}-\d{2} → \d{4}-\d{2}-\d{2}', h), h
         story('S10', s10)
         def s11():
             act('preferences'); f = sheet.locator('form')
@@ -98,9 +99,37 @@ def main():
             page.wait_for_function("document.querySelector('[data-weather=compact]').innerText.includes('°')", timeout=15000)
         story('S14', s14)
         def s15():
-            assert '0/12' in page.locator('[data-check-progress]').first.inner_text()
+            assert re.fullmatch(r'0/\d+ checked', page.locator('[data-check-progress]').first.inner_text().strip())
             act('local-ideas'); assert sheet.locator('.card').count() == 6; close()
         story('S15', s15)
+        def s16b():
+            tab('saved'); page.locator('[data-action=interests]').click(); page.wait_for_selector('#sheet[open]')
+            assert sheet.locator('#sheet-title').inner_text() == 'Gaming & K-pop'
+            assert sheet.locator('.notice li').count() >= 4, 'the cautions from the guide must be shown before the list'
+            cards = sheet.locator('.card'); assert cards.count() >= 16, cards.count()
+            sheet.evaluate("s=>s.querySelectorAll('details').forEach(d=>d.open=true)")
+            body = sheet.inner_text(); assert 'LoL Park' in body and 'Yongma Land' in body and 'Square Enix' in body and '트와이스' in body, 'guide destinations missing'
+            first = cards.first; name = first.locator('h3').inner_text()
+            first.locator('[data-action=add-starter]').click(); page.wait_for_timeout(600)
+            assert 'Already saved' in first.locator('[data-action=add-starter]').inner_text()
+            close(); tab('saved'); assert name in page.locator('main').inner_text(), 'the added interest is not in Saved'
+            card = page.locator('.place-card', has=page.locator('h3', has_text=name)).first
+            card.locator('.place-main').click(); page.wait_for_selector('#sheet[open]')
+            page.once('dialog', lambda d: d.accept()); sheet.locator('[data-action=delete]').click()
+            page.wait_for_function("()=>!document.querySelector('#sheet').open", timeout=10000)
+            assert name not in page.locator('main').inner_text(), 'cleanup failed, later stories will see this find'
+            return name
+        story('S16b', s16b)
+        def s17():
+            tab('tools'); page.locator('[data-action=foods]').click(); page.wait_for_selector('#sheet[open]')
+            sheet.evaluate("s=>s.querySelectorAll('details').forEach(d=>d.open=true)")
+            assert sheet.locator('.card').count() == 13 and 'Samgyeopsal' in sheet.inner_text() and 'Ssamjang' in sheet.inner_text(); close()
+            page.locator('[data-action=dayplans]').click(); page.wait_for_selector('#sheet[open]')
+            assert sheet.locator('.card').count() == 8 and 'Seongsu' in sheet.inner_text() and 'Achasan' in sheet.inner_text(); close()
+            page.locator('[data-action=transport]').click(); page.wait_for_selector('#sheet[open]')
+            t = sheet.inner_text(); assert 'Climate Card' in t and 'Exit numbers' in t and '1330' in t; close()
+            return 'food 13, day plans 8, transit and culture notes'
+        story('S17', s17)
         def s16():
             page.goto(a.base + '#today'); page.wait_for_selector('#nav'); expect(page.locator('[data-install-card]')).to_contain_text('Home Screen')
             page.click('[data-install-card] [data-action="install"]'); expect(page.locator('#sheet-title')).to_have_text('Add to Home Screen'); expect(page.locator('#sheet')).to_contain_text('Add to Home Screen'); assert page.locator('#sheet ol.steps li').count() == 5
@@ -254,18 +283,19 @@ def main():
             act('transport'); t = sheet.inner_text(); assert 'Official information' in t and 'Research date' in t and sheet.locator('section').count() >= 5; close()
         story('S45', s45)
         def s46():
-            act('checklist'); assert sheet.locator('input[data-check-id]').count() == 12
+            act('checklist'); n = sheet.locator('input[data-check-id]').count(); assert n >= 12, n
+            assert sheet.locator('[data-check-id=popup-check]').count() == 1, 'trip-guide checks are missing'
             sheet.locator('[data-check-id=documents]').check(); page.wait_for_timeout(400)
             trace = []
             for _ in range(12):
                 trace.append(page.evaluate("()=>[document.querySelector('#sheet').open, document.querySelector('#sheet-title')?.innerText, document.querySelector('#sheet').className, document.querySelector('#sheet [data-check-progress]')?.innerText]")); page.wait_for_timeout(250)
-            assert trace[-1][0] and trace[-1][3] and '1/12' in trace[-1][3], 'trace: ' + str(trace)
+            assert trace[-1][0] and trace[-1][3] and re.search(r'1/\d+ checked', trace[-1][3] or ''), 'trace: ' + str(trace)
             sheet.locator('.checklist-tool').first.click()
             trace2 = []
             for _ in range(12):
                 page.wait_for_timeout(250); trace2.append(page.evaluate("()=>[document.querySelector('#sheet').open, document.querySelector('#sheet-title')?.innerText, document.querySelector('#sheet').className, document.querySelector('#toast')?.innerText, document.activeElement?.outerHTML?.slice(0,60)]"))
             assert trace2[-1][0] and trace2[-1][1] != 'Predeparture checklist', 'trace2: ' + str(trace2); close()
-            page.reload(); page.wait_for_selector('#nav'); tab('trip'); assert '1/12' in page.locator('[data-check-progress]').first.inner_text(), 'checklist state must survive a reload'
+            page.reload(); page.wait_for_selector('#nav'); tab('trip'); assert re.search(r'1/\d+ checked', page.locator('[data-check-progress]').first.inner_text()), 'checklist state must survive a reload'
         story('S46', s46)
         # Trip / stay
         def s51():
@@ -347,6 +377,7 @@ def main():
             assert 'Existing stay vault kept' in page.locator('#toast').inner_text()
             c3 = browser.new_context(viewport={'width':390,'height':844}, bypass_csp=True); p3 = c3.new_page(); p3.goto(a.base + '#trip'); p3.wait_for_selector('#nav')
             p3.locator('[data-action=restore]').click(); p3.wait_for_timeout(300); f3 = p3.locator('#sheet form[data-form=restore]'); f3.locator('input[name=backup]').set_input_files(bp); f3.locator('[name=passphrase]').fill('backup passphrase long enough'); f3.locator('button[type=submit]').click(); p3.wait_for_timeout(2500)
+            p3.wait_for_function("()=>/Imported \\d+ finds/.test(document.querySelector('#toast').textContent)", timeout=20000)
             assert 'vault imported' in p3.locator('#toast').inner_text(), p3.locator('#toast').inner_text()
             assert p3.evaluate("async()=>{const d=await import('/src/db.js');return (await d.all()).length}") == before
             p3.locator('[data-action=checklist]').first.click(); p3.wait_for_timeout(300); assert p3.locator('[data-check-id=documents]').is_checked() and not p3.locator('[data-check-id=install]').is_checked(); c3.close()

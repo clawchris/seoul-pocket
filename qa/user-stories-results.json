@@ -40,6 +40,16 @@
   "note": ""
  },
  {
+  "id": "S16b",
+  "result": "PASS",
+  "note": "LoL Park"
+ },
+ {
+  "id": "S17",
+  "result": "PASS",
+  "note": "food 13, day plans 8, transit and culture notes"
+ },
+ {
   "id": "S16",
   "result": "PASS",
   "note": "card, 5-step guide, Trip link, dismissal persists"
@@ -96,8 +106,8 @@
  },
  {
   "id": "S31",
-  "result": "FAIL",
-  "note": "Deleted from this device. @line 206"
+  "result": "PASS",
+  "note": "Playing bundled Korean voice. Works offline; not yet native-speaker reviewed."
  },
  {
   "id": "S32",
@@ -197,7 +207,7 @@
  {
   "id": "S28",
   "result": "PASS",
-  "note": "화양양꼬치"
+  "note": "명봉반점(명봉양꼬치)"
  },
  {
   "id": "S61",

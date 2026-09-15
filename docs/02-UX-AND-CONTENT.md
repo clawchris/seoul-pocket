@@ -28,6 +28,11 @@ Food/place and visit-status choices use visible radio chips. Near our stay opens
 ## Predeparture checklist
 Two groups, twelve large checkbox rows, saved X/12 progress, links to relevant existing tools. Check only after doing the task. Saving an item must complete before claiming success; on failure restore the previous visual state. User confirmations are not automatic proof of readiness. Device-specific confirmations are not transferable through backup. General preparation confirmations may import only into previously missing keys.
 
+## The owner's trip guide in the app (14 September 2026)
+The gaming, esports and K-pop guide is content, not a document to read. Its destinations live in a Gaming & K-pop sheet reached from Saved, next to the existing idea lists, and each entry can be saved as an ordinary find so it joins search, filters, votes and sync. The guide's own cautions open that sheet, because they change what a person does: company offices are not attractions, pop-ups are temporary, and Korean game accounts are separate. Tier A is labelled "Your shortlist" and tier B "Worth adding if the day allows", which is the guide's own ranking rather than an invented one.
+
+Food is a separate sheet under Tools, because a dish is a thing to eat once, not a place to navigate to. Day plans are a third sheet, listing the eight day shapes and the neighbourhoods reachable from the stay. Transit and cultural notes were added to the existing transport sheet rather than a new surface. Seven preparation items joined the checklist, which is now 19 items. The exact Korean address never appears in any of this; the checklist item points at the stay vault instead.
+
 ## Sharing a post (14 September 2026)
 A single link box sits at the top of Today, directly under the hero, and at the top of Saved. It has one field and one button. Paste, tap Share, and the post becomes a find that opens on its own. No other input is asked for; the name and note are prefilled from the post and can be edited afterwards. Outside a shared trip the box explains that sharing needs a trip and offers to set one up. Save a find stays the manual form.
 
