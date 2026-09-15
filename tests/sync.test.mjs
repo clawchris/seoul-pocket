@@ -89,3 +89,29 @@ test('a member token unlocks the proxies and a stranger token does not; trip cou
  const cross=new Request('https://trip.example/api/trip/create',{method:'POST',headers:{Origin:'https://evil.example','Content-Type':'application/json'},body:JSON.stringify({name:'x',salt})});
  assert.equal((await create({request:cross,env})).status,403);
 });
+
+test('votes are their own record kind and come back with their kind in the change stream',async()=>{
+ const {env,owner,guest}=await setup();
+ const r=await send(env,guest.memberToken,{mutations:[{mutationId:'m1-aaaaaaaa',recordId:'v-place1-dev1abcd',kind:'vote',op:'put',baseVersion:0,envelope:'v1.a.b'}]});
+ assert.equal(r.body.acks[0].version,1);
+ const pull=await send(env,owner.memberToken,{});assert.equal(pull.body.changes[0].kind,'vote');
+ const bad=await send(env,guest.memberToken,{mutations:[{mutationId:'m2-aaaaaaaa',recordId:'x-00000001',kind:'stay',op:'put',baseVersion:0,envelope:'v1.a.b'}]});
+ assert.match(bad.body.errors[0].error,/Invalid/);
+});
+
+test('unfurl and media proxy need membership and the fetcher, and never expose the fetcher secret or origin',async()=>{
+ const {onRequestPost:unfurl}=await import('../functions/api/unfurl.js');const {onRequestGet:media}=await import('../functions/api/media/[[path]].js');
+ const {env,guest}=await setup();
+ assert.equal((await unfurl({request:post('/api/unfurl',{url:'https://www.instagram.com/reel/x/'}),env})).status,401);
+ assert.equal((await unfurl({request:post('/api/unfurl',{url:'https://www.instagram.com/reel/x/'},guest.memberToken),env})).status,503);
+ const env2={...env,FETCH_ORIGIN:'https://fetcher.example',FETCH_SECRET:'s'.repeat(40)};const old=globalThis.fetch;let seen;
+ globalThis.fetch=async(u,o)=>{seen={u:String(u),h:o.headers};return Response.json({id:'563715fe5105464386d7',provider:'instagram',author:'A',caption:'C',title:'T',durationS:7,kind:'video',thumb:'/media/563715fe5105464386d7/thumb.jpg',video:'/media/563715fe5105464386d7/video.mp4',url:'https://www.instagram.com/reel/x/'});};
+ try{const r=await unfurl({request:post('/api/unfurl',{url:'https://www.instagram.com/reel/x/?igsh=1'},guest.memberToken),env:env2}),b=await r.json();
+  assert.equal(r.status,200);assert.equal(seen.u,'https://fetcher.example/unfurl');assert.equal(seen.h['X-Fetch-Secret'],'s'.repeat(40));assert.equal(b.thumb,'/api/media/563715fe5105464386d7/thumb.jpg');assert.equal(b.video,'/api/media/563715fe5105464386d7/video.mp4');assert.equal(JSON.stringify(b).includes('fetcher.example'),false);
+  globalThis.fetch=async(u,o)=>{seen={u:String(u),h:o.headers};return new Response('abc',{status:206,headers:{'Content-Type':'video/mp4','Content-Range':'bytes 0-2/10','Content-Length':'3'}});};
+  const mr=await media({request:new Request('https://trip.example/api/media/563715fe5105464386d7/video.mp4?t='+guest.memberToken,{headers:{Range:'bytes=0-2'}}),env:env2,params:{path:['563715fe5105464386d7','video.mp4']}});
+  assert.equal(mr.status,206);assert.equal(seen.h.Range,'bytes=0-2');assert.equal(mr.headers.get('Content-Range'),'bytes 0-2/10');assert.match(mr.headers.get('Cache-Control'),/private/);
+  assert.equal((await media({request:new Request('https://trip.example/api/media/563715fe5105464386d7/video.mp4'),env:env2,params:{path:['563715fe5105464386d7','video.mp4']}})).status,401);
+  assert.equal((await media({request:new Request('https://trip.example/api/media/x/../etc?t='+guest.memberToken),env:env2,params:{path:['x','..']}})).status,404);
+ }finally{globalThis.fetch=old;}
+});

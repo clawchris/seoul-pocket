@@ -30,3 +30,13 @@ test('seed content has unique IDs and required phrase fields',()=>{assert.equal(
 test('backup validation rejects unsupported versions and missing photo references',()=>{assert.throws(()=>validateSnapshot({schema:2}));assert.throws(()=>validateSnapshot({schema:1,places:[{id:'a',name:'A',photoId:'missing'}],photos:[],meta:[]}));assert.ok(validateSnapshot({schema:1,places:[],photos:[],meta:[]}));});
 
 test('Kakao WGS84 normalization, category tail and out-of-region rejection',()=>{const p=normalizeKakao({place_name:'양꼬치',road_address_name:'서울 광진구',category_name:'음식점 > 양식 > 양꼬치',x:'127.0712',y:'37.5401',place_url:'http://place.map.kakao.com/1'});assert.equal(p.lat,37.5401);assert.equal(p.lng,127.0712);assert.equal(p.category,'양꼬치');assert.equal(p.links[0],'https://place.map.kakao.com/1');assert.equal(p.source,'Kakao Local');const far=normalizeKakao({place_name:'x',x:'-122.0',y:'37.3'});assert.equal(far.lat,null);});
+
+test('social media attachments and votes are validated before they are stored or shared',async()=>{
+ const {cleanMedia,cleanVote,cleanPlace}=await import('../public/src/domain.js');
+ const m=cleanMedia({id:'563715fe5105464386d7',provider:'instagram',author:'Seoul Food',caption:'c'.repeat(700),kind:'video',durationS:7.53,thumb:'/api/media/563715fe5105464386d7/thumb.jpg',video:'/api/media/563715fe5105464386d7/video.mp4',image:'https://evil.example/x.jpg',url:'https://www.instagram.com/reel/DBhP4P8i4aj/'});
+ assert.equal(m.caption.length,600);assert.equal(m.durationS,8);assert.equal(m.image,'');assert.equal(m.video,'/api/media/563715fe5105464386d7/video.mp4');
+ assert.equal(cleanMedia({id:'../../etc'}),null);assert.equal(cleanPlace({id:'p1',name:'x',media:{id:'bad'}}).media,null);
+ const v=cleanVote({id:'v-p1-0123456789ab',placeId:'p1',name:'Sam',vote:'in',at:'2026-09-14T00:00:00.000Z'});assert.equal(v.vote,'in');
+ assert.throws(()=>cleanVote({id:'v-p2-0123456789ab',placeId:'p1',vote:'in'}),/Invalid vote/);
+ assert.equal(cleanVote({id:'v-p1-0123456789ab',placeId:'p1',vote:'maybe'}).vote,'in');
+});

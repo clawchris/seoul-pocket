@@ -30,7 +30,9 @@ def sync_now(page):
     page.wait_for_timeout(200); return page.locator('[data-sync-line]').inner_text()
 
 def add_place(page, name, note=''):
-    tab(page, 'today'); page.click('[data-action="new"]'); page.fill('form[data-form="place"] input[name="name"]', name)
+    tab(page, 'today'); page.click('[data-action="new"]'); page.wait_for_selector('#sheet[open]')
+    if page.locator('[data-action="new-manual"]').count(): page.click('[data-action="new-manual"]')
+    page.fill('form[data-form="place"] input[name="name"]', name)
     if note: page.fill('form[data-form="place"] textarea[name="note"]', note)
     page.click('form[data-form="place"] button[type="submit"]'); page.wait_for_function("()=>!document.querySelector('#sheet').open")
 
@@ -106,6 +108,27 @@ def main():
             expect(B.locator('#connection')).to_contain_text('not shared'); assert 'Sync Test Place' in card_names(B)
             B.reload(); B.wait_for_selector('#nav'); expect(B.locator('#connection')).to_contain_text('not shared')
         story('T08 leaving keeps local finds and returns the phone to local-only', t08)
+        def t09():
+            tab(A, 'today'); A.click('[data-action="new"]'); expect(A.locator('#sheet-title')).to_have_text('Save a find from a link')
+            A.fill('form[data-form="link"] input[name="url"]', 'https://www.instagram.com/reel/DBhP4P8i4aj/?igsh=test'); A.click('form[data-form="link"] button[type="submit"]')
+            A.wait_for_function("()=>document.querySelector('#sheet-title')?.textContent && !/Save a find/.test(document.querySelector('#sheet-title').textContent)", timeout=180000)
+            title = A.locator('#sheet-title').inner_text(); assert title and 'Save a find' not in title, title
+            expect(A.locator('#sheet .media-block')).to_contain_text('instagram'); expect(A.locator('#sheet .media-block')).to_contain_text('shared by Alpha')
+            assert A.locator('#sheet video[data-media-src]').count() == 1; A.wait_for_function("()=>{const v=document.querySelector('#sheet video');return v&&v.poster&&v.src.includes('/api/media/');}", timeout=10000)
+            expect(A.locator('#sheet .vote-row')).to_contain_text('Nobody has answered yet'); A.click('[data-action="close"]')
+            tab(A, 'saved'); A.wait_for_function("()=>[...document.querySelectorAll('.place-card .place-thumb[data-photo]')].length>=1", timeout=10000)
+            return title
+        story('T09 a pasted Instagram link becomes a find with thumbnail, caption, video and a vote row', t09)
+        def t10():
+            B2 = new_page(browser, a.base); B2.click('[data-action="share-join"]'); f = 'form[data-form="share-join"] '
+            B2.fill(f + 'input[name="invite"]', invite['text']); B2.fill(f + 'input[name="memberName"]', 'Gamma'); B2.fill(f + 'input[name="passphrase"]', PASS); B2.click(f + 'button[type="submit"]'); B2.wait_for_function("()=>!document.querySelector('#sheet').open", timeout=20000)
+            sync_now(B2); tab(B2, 'saved'); B2.wait_for_function("()=>[...document.querySelectorAll('.place-card')].some(c=>c.querySelector('.place-thumb[data-photo]'))", timeout=30000)
+            card = B2.locator('.place-card:has(.place-thumb[data-photo])').first; card.locator('.place-main').click(); expect(B2.locator('#sheet .media-block')).to_contain_text('shared by Alpha')
+            B2.click('#sheet [data-action="vote-in"]'); expect(B2.locator('#sheet .vote-row')).to_contain_text('In: Gamma'); B2.click('[data-action="close"]'); sync_now(B2)
+            sync_now(A); tab(A, 'saved'); expect(A.locator('.place-card:has(.place-thumb[data-photo])').first).to_contain_text('1 in')
+            A.locator('.place-card:has(.place-thumb[data-photo])').first.locator('.place-main').click(); A.click('#sheet [data-action="vote-pass"]'); expect(A.locator('#sheet .vote-row')).to_contain_text('Pass: Alpha'); A.click('[data-action="close"]'); sync_now(A)
+            sync_now(B2); tab(B2, 'saved'); B2.locator('.place-card:has(.place-thumb[data-photo])').first.locator('.place-main').click(); expect(B2.locator('#sheet .vote-row')).to_contain_text('Pass: Alpha'); B2.click('[data-action="close"]'); B2.context.close()
+        story('T10 another phone receives the post with its thumbnail and both phones see each other\'s votes', t10)
         browser.close()
     failed = [s for s, ok in RESULTS if not ok]; print(f'{len(RESULTS)-len(failed)}/{len(RESULTS)} passed'); sys.exit(1 if failed else 0)
 

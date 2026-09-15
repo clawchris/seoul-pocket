@@ -1,4 +1,4 @@
-import {cleanPlace,SCHEMA,BACKUP_SCHEMAS,validateRate,text,validDate} from './domain.js';
+import {cleanPlace,cleanVote,SCHEMA,BACKUP_SCHEMAS,validateRate,text,validDate} from './domain.js';
 import {validateChecklistRecord,restorableChecklist} from './checklist.js';
 import {validEnvelope} from './crypto.js';
 const NAME='seoul-pocket';let opening;
@@ -8,7 +8,7 @@ export function database(){
  if(!opening)opening=new Promise((resolve,reject)=>{
   if(!globalThis.indexedDB){reject(new Error('Local storage is unavailable. Use normal Safari, not a private session.'));return;}
   const r=indexedDB.open(NAME,SCHEMA);
-  r.onupgradeneeded=()=>{for(const s of ['places','meta','photos','conflicts'])if(!r.result.objectStoreNames.contains(s))r.result.createObjectStore(s,{keyPath:'id'});if(!r.result.objectStoreNames.contains('outbox'))r.result.createObjectStore('outbox',{keyPath:'mutationId'});};
+  r.onupgradeneeded=()=>{for(const s of ['places','meta','photos','conflicts','votes'])if(!r.result.objectStoreNames.contains(s))r.result.createObjectStore(s,{keyPath:'id'});if(!r.result.objectStoreNames.contains('outbox'))r.result.createObjectStore('outbox',{keyPath:'mutationId'});};
   r.onsuccess=()=>{r.result.onversionchange=()=>{r.result.close();opening=null;};resolve(r.result);};r.onerror=()=>{opening=null;reject(r.error);};r.onblocked=()=>{opening=null;reject(new Error('Close other Seoul Pocket tabs and reopen.'));};
  });return opening;
 }
@@ -72,15 +72,17 @@ export async function getConflict(id){const d=await database();return request(d.
 /** Applies one server acknowledgement: clears the outbox entry and, when the place has not moved on locally, marks it clean at the new version.
  * Returns a follow-up mutation request when the place was edited again while the request was in flight. */
 export async function applyAck(ack){
- const d=await database(),tx=d.transaction(['places','outbox'],'readwrite'),done=complete(tx),places=tx.objectStore('places'),outbox=tx.objectStore('outbox');
+ const d=await database(),tx=d.transaction(['places','outbox','votes'],'readwrite'),done=complete(tx),places=tx.objectStore('places'),outbox=tx.objectStore('outbox');
  const m=await request(outbox.get(ack.mutationId)),p=await request(places.get(ack.recordId));outbox.delete(ack.mutationId);let followUp=null,queued=false;
+ if(!p&&ack.recordId.startsWith('v-')){const v=await request(tx.objectStore('votes').get(ack.recordId));if(v){v.serverVersion=ack.version;tx.objectStore('votes').put(v);}await done;return null;}
  for(const o of await request(outbox.getAll()))if(o.recordId===ack.recordId&&o.mutationId!==ack.mutationId){o.baseVersion=ack.version;outbox.put(o);queued=true;}
  if(p){p.serverVersion=ack.version;if(queued||(m&&p.rev===m.rev)){p.dirty=queued;}else{p.dirty=true;followUp={recordId:p.id,baseVersion:ack.version,place:p};}places.put(p);}
  await done;return followUp;
 }
 /** Records a conflict: the local copy stays untouched and dirty; the outbox entry is removed so it stops retrying. */
 export async function applyConflict(conflict,remotePlace){
- const d=await database(),tx=d.transaction(['places','outbox','conflicts'],'readwrite'),done=complete(tx),places=tx.objectStore('places');
+ const d=await database(),tx=d.transaction(['places','outbox','conflicts','votes'],'readwrite'),done=complete(tx),places=tx.objectStore('places');
+ if(conflict.recordId.startsWith('v-')){const ob=tx.objectStore('outbox'),m=await request(ob.get(conflict.mutationId));ob.delete(conflict.mutationId);if(m&&!conflict.current.deleted){ob.put({...m,mutationId:crypto.randomUUID(),baseVersion:conflict.current.version});}const v=await request(tx.objectStore('votes').get(conflict.recordId));if(v){v.serverVersion=conflict.current.version;tx.objectStore('votes').put(v);}await done;return;}
  tx.objectStore('outbox').delete(conflict.mutationId);const p=await request(places.get(conflict.recordId));
  if(p){p.conflict=true;places.put(p);tx.objectStore('conflicts').put({id:conflict.recordId,version:conflict.current.version,deleted:!!conflict.current.deleted,remote:remotePlace,seenAt:new Date().toISOString()});}
  else if(!conflict.current.deleted&&remotePlace){places.put(cleanPlace({...remotePlace,id:conflict.recordId,photoId:'',rev:1,updatedAt:new Date().toISOString(),serverVersion:conflict.current.version,dirty:false}));}
@@ -88,9 +90,11 @@ export async function applyConflict(conflict,remotePlace){
 }
 /** Applies a page of remote changes. Clean local records follow the server; dirty ones become conflicts instead of being overwritten. */
 export async function applyChanges(changes,decoded,cursor){
- const d=await database(),tx=d.transaction(['places','conflicts','meta','photos'],'readwrite'),done=complete(tx),places=tx.objectStore('places'),conflicts=tx.objectStore('conflicts'),meta=tx.objectStore('meta');
+ const d=await database(),tx=d.transaction(['places','conflicts','meta','photos','votes'],'readwrite'),done=complete(tx),places=tx.objectStore('places'),conflicts=tx.objectStore('conflicts'),meta=tx.objectStore('meta'),votes=tx.objectStore('votes');
  for(const c of changes){
-  const p=await request(places.get(c.recordId)),remote=decoded.get(c.recordId);
+  const remote=decoded.get(c.recordId);
+  if(c.kind==='vote'){if(c.deleted)votes.delete(c.recordId);else if(remote){try{votes.put(cleanVote({...remote,id:c.recordId,serverVersion:c.version}));}catch{}}continue;}
+  const p=await request(places.get(c.recordId));
   if(p&&(p.serverVersion||0)>=c.version)continue;
   if(p&&p.dirty){if(!p.conflict){p.conflict=true;places.put(p);}conflicts.put({id:c.recordId,version:c.version,deleted:c.deleted,remote:remote||null,seenAt:new Date().toISOString()});continue;}
   if(c.deleted){if(p){places.delete(p.id);if(p.photoId)tx.objectStore('photos').delete(p.photoId);}conflicts.delete(c.recordId);continue;}
@@ -110,8 +114,8 @@ export async function resolveConflict(id,choice,mutation){
  await done;announce();
 }
 export async function leaveTrip(){
- const d=await database(),tx=d.transaction(['places','meta','outbox','conflicts'],'readwrite'),done=complete(tx),places=tx.objectStore('places');
- tx.objectStore('meta').delete('trip');tx.objectStore('meta').delete('tripKey');tx.objectStore('outbox').clear();tx.objectStore('conflicts').clear();
+ const d=await database(),tx=d.transaction(['places','meta','outbox','conflicts','votes'],'readwrite'),done=complete(tx),places=tx.objectStore('places');
+ tx.objectStore('meta').delete('trip');tx.objectStore('meta').delete('tripKey');tx.objectStore('outbox').clear();tx.objectStore('conflicts').clear();tx.objectStore('votes').clear();
  const all=await request(places.getAll());for(const p of all){p.serverVersion=0;p.dirty=false;p.conflict=false;places.put(p);}
  await done;announce();
 }
@@ -121,3 +125,20 @@ export async function markAllDirtyForShare(){
 }
 export async function putOutbox(m){const d=await database(),tx=d.transaction('outbox','readwrite'),done=complete(tx),ob=tx.objectStore('outbox');for(const o of await request(ob.getAll()))if(o.recordId===m.recordId)ob.delete(o.mutationId);ob.put(m);await done;}
 export async function dropOutbox(mutationId){const d=await database(),tx=d.transaction('outbox','readwrite'),done=complete(tx);tx.objectStore('outbox').delete(mutationId);await done;}
+
+/* Votes and social media attachments. */
+export async function votesAll(){const d=await database();return request(d.transaction('votes').objectStore('votes').getAll());}
+export async function putVote(raw,mutation){
+ const v=cleanVote(raw),d=await database(),tx=d.transaction(['votes','outbox'],'readwrite'),done=complete(tx);tx.objectStore('votes').put(v);
+ if(mutation){const ob=tx.objectStore('outbox');for(const m of await request(ob.getAll()))if(m.recordId===v.id)ob.delete(m.mutationId);ob.put({...mutation,recordId:v.id,rev:1,queuedAt:new Date().toISOString()});}
+ await done;announce();return v;
+}
+/** Stores a fetched thumbnail for a place without touching its shared fields, so nothing is re-synced. */
+export async function attachPhoto(placeId,photo){
+ const d=await database(),tx=d.transaction(['places','photos'],'readwrite'),done=complete(tx),places=tx.objectStore('places'),p=await request(places.get(placeId));
+ if(!p){tx.abort();await done.catch(()=>{});return false;}
+ if(p.photoId){tx.abort();await done.catch(()=>{});return false;}
+ tx.objectStore('photos').put(photo);p.photoId=photo.id;places.put(p);await done;announce();return true;
+}
+export async function placesNeedingThumb(){const all=await all_();return all.filter(p=>p.media&&(p.media.thumb||p.media.image)&&!p.photoId);}
+async function all_(){const d=await database();return request(d.transaction('places').objectStore('places').getAll());}

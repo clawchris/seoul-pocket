@@ -29,7 +29,7 @@ const action=(name,id='')=>`data-action="${name}" ${id?`data-id="${e(id)}"`:''}`
 async function load(){
  [state.places,state.rate,state.vaultExists]=await Promise.all([db.all(),db.getMeta('rate'),db.getMeta('stay').then(Boolean)]);
  const prefs=await db.getMeta('prefs');if(prefs)state.prefs={...state.prefs,...prefs};
- state.trip=(await db.getMeta('trip'))||null;state.installHidden=!!(await db.getMeta('installHidden'));
+ state.trip=(await db.getMeta('trip'))||null;state.installHidden=!!(await db.getMeta('installHidden'));state.votes=await db.votesAll();
  const [toolPrefs,weather,checks]=await Promise.all([db.getMeta('toolPrefs'),db.getMeta('weather'),Promise.all(CHECKLIST.map(x=>db.getMeta(checklistMetaKey(x.id))))]);
  if(toolPrefs){state.toolPrefs.currencyFrom=toolPrefs.currencyFrom==='USD'?'USD':'KRW';state.toolPrefs.weatherUnit=toolPrefs.weatherUnit==='F'?'F':'C';}
  try{state.weather=weather?validateForecast(weather):null;}catch{state.weather=null;state.weatherError='The saved forecast could not be read. Refresh online; other trip data is unchanged.';}
@@ -40,7 +40,7 @@ async function load(){
 }
 function ago(iso){const m=Math.round((Date.now()-Date.parse(iso))/60000);return !Number.isFinite(m)?'':m<1?'just now':m<60?m+' min ago':Math.round(m/60)+' h ago';}
 function shareStatus(){const s=sync.status;if(!state.trip)return 'Saved on this device, not shared';if(s.signedOut)return 'Shared trip · signed out';if(s.conflicts)return `Shared trip · ${s.conflicts} to resolve`;if(s.pending)return `Shared trip · ${s.pending} waiting to send`;if(s.busy)return 'Shared trip · syncing';return s.lastSyncAt?'Shared trip · synced '+ago(s.lastSyncAt):'Shared trip · not synced yet';}
-function syncLine(){const s=sync.status,parts=[];if(s.signedOut)parts.push('This phone is no longer a member. Leave and join again with a new invite.');else{parts.push(s.busy?'Syncing…':s.lastSyncAt?'Last synced '+ago(s.lastSyncAt)+'.':'Not synced yet.');if(s.pending)parts.push(`${s.pending} change${s.pending>1?'s':''} waiting to send.`);if(s.conflicts)parts.push(`${s.conflicts} find${s.conflicts>1?'s need':' needs'} a decision.`);if(s.error)parts.push(s.error);}return e(parts.join(' '));}
+function syncLine(){const s=sync.status,parts=[];if(s.signedOut)parts.push('This phone is no longer a member. Leave and join again with a new invite.');else{parts.push(s.busy?'Syncing…':s.lastSyncAt?'Last synced '+ago(s.lastSyncAt)+'.':'Not synced yet.');if(s.pending)parts.push(`${s.pending} change${s.pending>1?'s':''} waiting to send.`);if(s.conflicts)parts.push(`${s.conflicts} find${s.conflicts>1?'s need':' needs'} a decision.`);if(s.undecryptable)parts.push(`${s.undecryptable} shared item${s.undecryptable>1?'s':''} could not be decrypted: the group passphrase on this phone may differ. Leave and join again.`);else if(s.error)parts.push(s.error);}return e(parts.join(' '));}
 function connection(){
  $('#connection').innerHTML=`<div class="connection ${navigator.onLine?'':'offline'}"><span class="dot"></span>${navigator.onLine?'Connection detected':'Offline'}<span aria-hidden="true">·</span> ${e(shareStatus())}${state.update?' · Update available':''}</div>`;
 }
@@ -68,7 +68,7 @@ function todayView(){
  <div class="card spacer"><h3>Ideas around your stay</h3><p class="small muted">Jayang market, Kondae food, Seongsu cafés, and east-Seoul green spaces.</p>${button('Browse local ideas','local-ideas','secondary full')}</div>`;
 }
 
-function placeCard(p){return `<article class="place-card"><button type="button" class="place-main" ${action('detail',p.id)}><span class="place-thumb ${p.kind}" ${p.photoId?`data-photo="${e(p.photoId)}"`:''}>${icon(p.kind==='food'?'food':'pin')}</span><span class="place-text"><h3>${e(p.name)}</h3><p>${e(p.korean||p.neighborhood||(p.kind==='food'?'Food idea':'Place idea'))}</p><span class="tag ${p.kind==='food'?'warm':''}">${p.kind==='food'?'Food & drink':'Place to go'}</span> ${p.conflict?'<span class="tag alert">Needs a decision</span> ':''}${p.time?`<span class="date-pill">${e(p.time)}</span>`:''}</span></button><div class="place-footer">${button(`${icon(p.status==='visited'?'check':'pin')}${e(statusNames[p.status]||'Want to go')}`,'visit',p.status==='visited'?'done':'',`data-id="${e(p.id)}" aria-label="${p.status==='visited'?'Mark not visited':'Mark visited'}: ${e(p.name)}"`)}${button(`${icon('star')}${p.priority?'Must-try':'Save as must-try'}`,'priority',p.priority?'starred':'',`data-id="${e(p.id)}" aria-pressed="${!!p.priority}"`)}</div></article>`;}
+function placeCard(p){return `<article class="place-card"><button type="button" class="place-main" ${action('detail',p.id)}><span class="place-thumb ${p.kind}" ${p.photoId?`data-photo="${e(p.photoId)}"`:''}>${icon(p.kind==='food'?'food':'pin')}</span><span class="place-text"><h3>${e(p.name)}</h3><p>${e(p.korean||p.neighborhood||(p.kind==='food'?'Food idea':'Place idea'))}</p><span class="tag ${p.kind==='food'?'warm':''}">${p.kind==='food'?'Food & drink':'Place to go'}</span> ${p.conflict?'<span class="tag alert">Needs a decision</span> ':''}${voteBadge(p)}${p.time?`<span class="date-pill">${e(p.time)}</span>`:''}</span></button><div class="place-footer">${button(`${icon(p.status==='visited'?'check':'pin')}${e(statusNames[p.status]||'Want to go')}`,'visit',p.status==='visited'?'done':'',`data-id="${e(p.id)}" aria-label="${p.status==='visited'?'Mark not visited':'Mark visited'}: ${e(p.name)}"`)}${button(`${icon('star')}${p.priority?'Must-try':'Save as must-try'}`,'priority',p.priority?'starred':'',`data-id="${e(p.id)}" aria-pressed="${!!p.priority}"`)}</div></article>`;}
 function filteredPlaces(){return state.places.filter(p=>{
  const filter=state.filter==='all'||p.kind===state.filter||(state.filter==='must'&&p.priority)||(state.filter==='visited'&&p.status==='visited');
  return filter&&[p.name,p.korean,p.neighborhood,p.note].join(' ').toLowerCase().includes(state.query.toLowerCase());
@@ -146,7 +146,11 @@ function startIdle(){clearTimeout(state.idle);if(state.vault)state.idle=setTimeo
 document.addEventListener('pointerdown',startIdle,{passive:true});document.addEventListener('keydown',startIdle);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){state.apiToken='';stopSpeech();const sensitive=!!state.vault||state.modalKind.startsWith('stay')||state.modalKind==='connection'||state.modalKind==='backup'||state.modalKind==='restore'||state.modalKind==='share-create'||state.modalKind==='share-join';lockStay();if(sensitive)closeSheet(true,true);}else {load().then(render).then(maybeRefreshWeather).catch(err=>toast(errorMessage(err)));}});
 
+async function hydrateMedia(root){
+ for(const v of root.querySelectorAll('video[data-media-src]')){const src=await sync.mediaSrc(v.dataset.mediaSrc);if(src&&v.src!==src)v.src=src;const pid=v.dataset.poster;if(pid){try{if(!photoURLs.has(pid)){const p=await db.photo(pid);if(p?.blob)photoURLs.set(pid,URL.createObjectURL(p.blob));}if(photoURLs.has(pid))v.poster=photoURLs.get(pid);}catch{}}}
+}
 async function hydratePhotos(root){
+ hydrateMedia(root).catch(()=>{});
  for(const el of root.querySelectorAll('[data-photo]')){
   const id=el.dataset.photo;
   try{if(!photoURLs.has(id)){const p=await db.photo(id);if(p?.blob)photoURLs.set(id,URL.createObjectURL(p.blob));}
@@ -175,7 +179,7 @@ function placeForm(p={}){
 async function showPlace(p){
  const links=mapLinks(p,location.origin),c=p.conflict?await db.getConflict(p.id):null;
  const diff=c&&!c.deleted&&c.remote?['name','korean','note','address','date','time','status','priority'].filter(f=>String(c.remote[f]??'')!==String(p[f]??'')):[];
- openSheet(e(p.name),`${c?`<div class="notice"><strong>Two versions of this find.</strong><p class="small">${c.deleted?'Someone deleted the shared copy after you changed it.':diff.length?'The shared copy differs in '+e(diff.join(', '))+'.'+(diff.includes('name')?' Shared name: “'+e(c.remote.name)+'”.':'')+(diff.includes('note')?' Shared note: “'+e(String(c.remote.note).slice(0,140))+'”.':''):'The shared copy was updated by someone else.'} Your copy is shown below and stays until you choose.</p><div class="row wrap">${button('Keep mine','conflict-mine','primary',`data-id="${e(p.id)}"`)}${button(c.deleted?'Delete mine too':'Use shared','conflict-shared','secondary',`data-id="${e(p.id)}"`)}</div></div>`:''}${p.photoId?`<div class="detail-image" data-photo="${e(p.photoId)}"></div>`:''}<div class="row wrap"><span class="tag ${p.kind==='food'?'warm':''}">${p.kind==='food'?'Food & drink':'Place to go'}</span><span class="tag gray">${e(statusNames[p.status])}</span>${p.priority?'<span class="tag warm">Must-try</span>':''}</div>
+ openSheet(e(p.name),`${mediaBlock(p)}${c?`<div class="notice"><strong>Two versions of this find.</strong><p class="small">${c.deleted?'Someone deleted the shared copy after you changed it.':diff.length?'The shared copy differs in '+e(diff.join(', '))+'.'+(diff.includes('name')?' Shared name: “'+e(c.remote.name)+'”.':'')+(diff.includes('note')?' Shared note: “'+e(String(c.remote.note).slice(0,140))+'”.':''):'The shared copy was updated by someone else.'} Your copy is shown below and stays until you choose.</p><div class="row wrap">${button('Keep mine','conflict-mine','primary',`data-id="${e(p.id)}"`)}${button(c.deleted?'Delete mine too':'Use shared','conflict-shared','secondary',`data-id="${e(p.id)}"`)}</div></div>`:''}${p.media?'':p.photoId?`<div class="detail-image" data-photo="${e(p.photoId)}"></div>`:''}${voteRow(p)}<div class="row wrap"><span class="tag ${p.kind==='food'?'warm':''}">${p.kind==='food'?'Food & drink':'Place to go'}</span><span class="tag gray">${e(statusNames[p.status])}</span>${p.priority?'<span class="tag warm">Must-try</span>':''}</div>
  ${p.korean?`<p class="ko-title spacer" lang="ko">${e(p.korean)}</p>`:''}${p.address?`<p lang="ko">${e(p.address)}</p>${button('Copy address','copy-address','secondary',`data-id="${e(p.id)}"`)}`:''}
  ${p.date?`<p class="small spacer">Planned: ${e(p.date)} ${e(p.time)} · Seoul time</p>`:''}
  <p class="detail-note spacer">${e(p.note||'No notes yet.')}</p><div class="detail-links">${external('Open Naver Maps app',links.app)}${external('Open Naver in browser',links.web)}${links.transit?external('Public transit directions',links.transit):''}${links.walk?external('Walking directions',links.walk):''}${kakaoMapLinks(p)?external('Open in Kakao Map',kakaoMapLinks(p).look):''}</div>
@@ -238,6 +242,20 @@ window.addEventListener('afterprint',()=>{$('#print-panel').replaceChildren();})
 document.addEventListener('visibilitychange',()=>{if(document.hidden)$('#print-panel').replaceChildren();});
 
 const proxyToken=()=>state.apiToken||state.trip?.memberToken||'';
+function votesFor(id){const vs=state.votes.filter(v=>v.placeId===id),me=state.trip?.deviceId?vs.find(v=>v.id.endsWith('-'+state.trip.deviceId)):null;return {ins:vs.filter(v=>v.vote==='in'),passes:vs.filter(v=>v.vote==='pass'),mine:me?me.vote:''};}
+function voteBadge(p){const v=votesFor(p.id);return v.ins.length?`<span class="tag">${v.ins.length} in</span> `:'';}
+function mediaBlock(p){
+ const m=p.media;if(!m)return '';
+ const online=navigator.onLine&&state.trip;
+ const player=m.kind==='video'&&m.video&&online?`<video class="media-video" controls playsinline preload="metadata" ${p.photoId?`data-poster="${e(p.photoId)}"`:''} data-media-src="${e(m.video)}"></video>`:p.photoId?`<div class="detail-image" data-photo="${e(p.photoId)}"></div>`:`<div class="detail-image media-empty">${icon('photo')}</div>`;
+ return `<div class="media-block">${player}<p class="caption">${m.kind==='video'&&!online?'Video plays when online. ':''}${e(m.provider||'link')}${m.author?' · '+e(m.author):''}${p.sharedBy?' · shared by '+e(p.sharedBy):''}${m.url?' · '+external('Open original',m.url):''}</p></div>`;
+}
+function voteRow(p){
+ if(!state.trip)return '';const v=votesFor(p.id);
+ const names=l=>l.map(x=>e(x.name)).join(', ');
+ return `<div class="vote-row"><div class="row wrap">${button(`${icon('check')} I’m in${v.ins.length?' · '+v.ins.length:''}`,'vote-in',v.mine==='in'?'primary':'secondary',`data-id="${e(p.id)}" aria-pressed="${v.mine==='in'}"`)}${button(`Pass${v.passes.length?' · '+v.passes.length:''}`,'vote-pass',v.mine==='pass'?'primary':'secondary',`data-id="${e(p.id)}" aria-pressed="${v.mine==='pass'}"`)}</div><p class="caption">${v.ins.length?'In: '+names(v.ins)+'. ':''}${v.passes.length?'Pass: '+names(v.passes)+'.':''}${!v.ins.length&&!v.passes.length?'Nobody has answered yet.':''}</p></div>`;
+}
+function linkSheet(){openSheet('Save a find from a link',`<p class="sheet-subtitle">Paste a TikTok, Instagram reel, YouTube, Naver or X link. The post, its picture and caption are saved and shared with the group.</p><form data-form="link">${field('Link','url','','url','required maxlength="600" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://www.instagram.com/reel/…"')}<p class="form-error" role="alert"></p><button class="primary full" type="submit">Save and share</button></form><p class="caption spacer">Instagram and TikTok need a connection to fetch. ${button('Add by hand instead','new-manual','text-button')}</p>`,'link');}
 const installed=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 function installCard(){if(installed()||state.installHidden)return '';return `<section class="notice neutral spacer" data-install-card><strong>Put Seoul Pocket on your Home Screen.</strong><p class="small">From the Home Screen icon it opens full screen, keeps working offline and stays signed in to the shared trip.</p><div class="row wrap">${button('Show me how','install','primary')}${button('Not now','install-hide','text-button')}</div></section>`;}
 function installSheet(){openSheet('Add to Home Screen',`<p class="sheet-subtitle">${installed()?'You are already using the Home Screen app.':'Takes about ten seconds in Safari.'}</p><ol class="steps"><li>Open <strong>seoul-pocket.pages.dev</strong> in <strong>Safari</strong>, not in a browser inside another app.</li><li>Tap the <strong>Share</strong> button, the square with an arrow pointing up, at the bottom of the screen.</li><li>Scroll the list and tap <strong>Add to Home Screen</strong>.</li><li>Tap <strong>Add</strong> in the top right. The icon says Seoul Pocket.</li><li>Open it from that icon from now on. Saved finds, the stay vault and the shared trip on the Safari tab and on the icon are the same data, because both live in this iPhone's Safari storage.</li></ol><p class="caption spacer">If Add to Home Screen is missing, you are in an in-app browser. Tap the compass or “Open in Safari” first.</p>`,'install');}
@@ -322,7 +340,9 @@ document.addEventListener('click',async ev=>{
   switch(a){
    case 'tab': if(sheet.open)closeSheet();state.tab=b.dataset.tab;location.hash=state.tab;render();window.scrollTo({top:0});main.focus({preventScroll:true});break;
    case 'close':closeSheet();break;
-   case 'new':placeForm();break;
+   case 'new':state.trip?linkSheet():placeForm();break;
+   case 'new-manual':placeForm();break;
+   case 'vote-in':case 'vote-pass':{const p=getPlace(id);b.disabled=true;try{await sync.castVote(p,a==='vote-in'?'in':'pass');await load();render();showPlace(getPlace(id));}finally{b.disabled=false;}break;}
    case 'edit':placeForm(getPlace(id));break;
    case 'detail':showPlace(getPlace(id));break;
    case 'filter':state.filter=b.dataset.filter;render();break;
@@ -458,6 +478,16 @@ sheet.addEventListener('submit',async ev=>{
    }
    case 'connection':{
     const token=text(values.token,256);if(!/^[a-zA-Z0-9_-]{32,256}$/.test(token))throw new Error('Use the generated private proxy token from setup.');state.apiToken=token;closeSheet(true);toast('Place search token available until the app is backgrounded.');break;
+   }
+   case 'link':{
+    const url=text(values.url,600);if(!/^https:\/\//.test(url))throw new Error('Paste a full https link.');
+    submit.textContent='Fetching the post…';
+    const {meta,photo}=await sync.unfurl(url);
+    const caption=String(meta.caption||'').trim(),first=caption.split(/\n/)[0].trim();
+    const name=(meta.title&&!/^(video|photo|post) by /i.test(meta.title)?meta.title:first||meta.author||'Shared post').slice(0,140);
+    const food=/food|맛집|restaurant|cafe|카페|coffee|eat|menu|bbq|chicken|noodle|ramen|dessert|bakery|bar|drink|brunch|dinner|lunch|snack|street food|market/i.test(caption+' '+name);
+    const place=cleanPlace({id:crypto.randomUUID(),name,korean:'',kind:food?'food':'place',neighborhood:'',address:'',note:caption,links:[meta.url||url],lat:'',lng:'',source:'shared:'+(meta.provider||'link'),checkedAt:'',priority:false,photoId:photo?.id||'',media:meta,sharedBy:state.trip?.memberName||''});
+    await db.savePlace(place,0,photo,await sync.mutationFor(place));sync.kick();closeSheet(true);await load();render();toast('Saved and shared. Tap it to fix the name or add notes.');showPlace(getPlace(place.id));break;
    }
    case 'share-create':{
     if(values.passphrase!==values.confirm)throw new Error('The passphrases do not match.');

@@ -32,6 +32,7 @@ Publish **dist/** through a Pages workflow that also deploys root-level **functi
 | Phrases | 28 written phrases and show cards; all 28 bundled as machine-generated Korean clips (Apple Yuna TTS) cached offline; native-speaker review pending; device speech is the fallback |
 | Recovery | Encrypted exports, non-overwriting restore, generated app shell/cache checks |
 | Sharing | Optional shared trip: anyone on the app creates one with a name and a group passphrase, others join with a 16+8 character invite plus that passphrase; membership also unlocks place search and buzz, so no setup token is ever typed on a phone; every find is sealed on the phone (AES-GCM, key from PBKDF2 over the passphrase and a server salt, record id bound as AAD); versioned compare-and-swap sync with idempotent receipts; conflicts are shown, never auto-merged; photos and the stay vault never leave the phone |
+| Social posts | Paste a TikTok, Instagram, YouTube, Naver or X link and it becomes a find: thumbnail, caption, author and the video itself, playable in the app when online. A private fetcher (yt-dlp on the owner's box, reached through Tailscale Funnel) does the reading; phones only ever see `/api/media/...`. Members answer "I'm in" or "Pass" and everyone sees the tally |
 | Map and nearby | Kakao Maps JavaScript SDK (needs `KAKAO_JS_KEY`, loaded only when the map sheet opens); Kakao blog buzz per find |
 | App shortcuts | One sheet of deep links: Naver Map, Kakao Map, Kakao T, Papago, Google Translate, Subway, Kakao Talk, with App Store fallbacks |
 
@@ -43,7 +44,7 @@ public/ is the only static build input. functions/ holds Pages endpoints. script
 ## Verification commands
 ```sh
 npm run verify                    # Node checks (crypto, domain, API proxies, sync server over node:sqlite) + syntax + build + plaintext deployment scan
-wrangler pages dev dist -c wrangler.local.toml   # Functions with a local D1; then python tests/sync_stories.py --base http://127.0.0.1:8788 --token-file .dev.vars
+wrangler pages dev dist                          # Functions with a local D1 (main wrangler.toml); then python tests/sync_stories.py --base http://127.0.0.1:8788 --token-file .dev.vars
 npm run check:audio               # passes with a warning: clips exist but are machine-generated until a Korean speaker sets reviewed/reviewer
 python tests/render_harness.py    # requires separate Python Playwright + /usr/bin/chromium
 python tests/browser_smoke.py --base http://localhost:4173

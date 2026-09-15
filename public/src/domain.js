@@ -1,6 +1,6 @@
 /** Pure domain rules, shared by the UI and tests. No network or browser globals. */
-export const SCHEMA = 2;
-export const BACKUP_SCHEMAS = [1,2];
+export const SCHEMA = 3;
+export const BACKUP_SCHEMAS = [1,2,3];
 export const STATUSES = ['saved', 'planned', 'visited', 'skipped'];
 export const KINDS = ['food', 'place'];
 export function text(value, max = 500) { return String(value ?? '').trim().slice(0, max); }
@@ -12,6 +12,17 @@ export function safeURL(value) {
 export function validDate(value) {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value;
 }
+const mediaPath=v=>typeof v==='string'&&/^\/api\/media\/[a-f0-9]{20}\/[a-z]+\.(mp4|jpg|jpeg|webp|png)$/i.test(v)?v:'';
+/** A social post attached to a find: metadata only, files are fetched per phone. */
+export function cleanMedia(raw){
+  if(!raw||typeof raw!=='object'||typeof raw.id!=='string'||!/^[a-f0-9]{20}$/.test(raw.id))return null;
+  return {id:raw.id,provider:text(raw.provider,30),author:text(raw.author,80),caption:text(raw.caption,600),title:text(raw.title,140),kind:raw.kind==='image'?'image':'video',durationS:Number.isFinite(Number(raw.durationS))?Math.max(0,Math.round(Number(raw.durationS))):0,width:Number.isSafeInteger(raw.width)?raw.width:0,height:Number.isSafeInteger(raw.height)?raw.height:0,url:safeURL(raw.url)||'',thumb:mediaPath(raw.thumb),video:mediaPath(raw.video),image:mediaPath(raw.image)};
+}
+export function cleanVote(raw){
+  if(!raw||typeof raw!=='object'||typeof raw.id!=='string'||!/^v-[a-zA-Z0-9_-]{1,90}-[a-f0-9]{12}$/.test(raw.id))throw new Error('Invalid vote.');
+  const placeId=text(raw.placeId,90);if(!placeId||!raw.id.startsWith('v-'+placeId+'-'))throw new Error('Invalid vote.');
+  return {id:raw.id,placeId,name:text(raw.name,40)||'Traveler',vote:raw.vote==='pass'?'pass':'in',at:validDate(String(raw.at||'').slice(0,10))?String(raw.at).slice(0,24):new Date().toISOString(),serverVersion:Number.isSafeInteger(raw.serverVersion)?raw.serverVersion:0};
+}
 export function cleanPlace(raw, id = raw.id) {
   const name = text(raw.name, 140); if (!name) throw new Error('Add a name first.');
   if (typeof id !== 'string' || !/^[a-zA-Z0-9_-]{1,90}$/.test(id)) throw new Error('Invalid item identifier.');
@@ -22,7 +33,7 @@ export function cleanPlace(raw, id = raw.id) {
   const lng = raw.lng === '' || raw.lng == null ? null : Number(raw.lng);
   if ((lat === null) !== (lng === null) || (lat !== null && (!Number.isFinite(lat) || lat < 31.43 || lat > 44.35 || !Number.isFinite(lng) || lng < 122.37 || lng > 132))) throw new Error('Enter both coordinates within Korea, or leave both blank.');
   const time = text(raw.time,5); if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Use a valid time.');
-  return {id, name, korean:text(raw.korean,140), kind:KINDS.includes(raw.kind)?raw.kind:'place', neighborhood:text(raw.neighborhood,100), address:text(raw.address,350), note:text(raw.note,3000), links:sourceLinks.filter(Boolean).slice(0,8).map(safeURL), status:STATUSES.includes(raw.status)?raw.status:'saved', priority:!!raw.priority, date, time, lat, lng, photoId:text(raw.photoId,90), source:text(raw.source,200), checkedAt:validDate(raw.checkedAt)?raw.checkedAt:'', rev:Number.isSafeInteger(raw.rev)&&raw.rev>=0?raw.rev:0, updatedAt:text(raw.updatedAt,40), serverVersion:Number.isSafeInteger(raw.serverVersion)&&raw.serverVersion>=0?raw.serverVersion:0, dirty:!!raw.dirty, conflict:!!raw.conflict};
+  return {id, name, korean:text(raw.korean,140), kind:KINDS.includes(raw.kind)?raw.kind:'place', neighborhood:text(raw.neighborhood,100), address:text(raw.address,350), note:text(raw.note,3000), links:sourceLinks.filter(Boolean).slice(0,8).map(safeURL), status:STATUSES.includes(raw.status)?raw.status:'saved', priority:!!raw.priority, date, time, lat, lng, photoId:text(raw.photoId,90), source:text(raw.source,200), checkedAt:validDate(raw.checkedAt)?raw.checkedAt:'', rev:Number.isSafeInteger(raw.rev)&&raw.rev>=0?raw.rev:0, updatedAt:text(raw.updatedAt,40), serverVersion:Number.isSafeInteger(raw.serverVersion)&&raw.serverVersion>=0?raw.serverVersion:0, dirty:!!raw.dirty, conflict:!!raw.conflict, media:cleanMedia(raw.media), sharedBy:text(raw.sharedBy,40)};
 }
 export function parseAmount(value) {
   const s=String(value).trim().replaceAll(',','');

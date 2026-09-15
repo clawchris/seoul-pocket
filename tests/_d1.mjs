@@ -14,4 +14,4 @@ export function fakeD1(){
   exec:sql=>db.exec(sql),
  };
 }
-export function migrated(){const d=fakeD1();for(const f of ['0001_shared_trip.sql','0002_invite_uses.sql'])d.exec(readFileSync(new URL('../migrations/'+f,import.meta.url),'utf8'));return d;}
+export function migrated(){const d=fakeD1();for(const f of ['0001_shared_trip.sql','0002_invite_uses.sql','0003_record_kinds.sql'])d.exec(readFileSync(new URL('../migrations/'+f,import.meta.url),'utf8'));return d;}

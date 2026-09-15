@@ -64,6 +64,8 @@ Critical tests: first installation; a second controlled load; entirely offline r
 | `POST /api/trip/create` | Same-origin, no token; creates trip, owner member token, first invite; hard cap of 30 trips; 503 without the D1 binding |
 | `POST /api/trip/join` | Public with trip id + 8-character invite code (hash compared, expiring, 12 uses); returns a member token |
 | `POST/GET /api/trip/invite` | Member token; owner rotates the invite (old code dies at once); GET lists members |
+| `POST /api/unfurl` | Member token; forwards a social link to the private fetcher; returns metadata and `/api/media` paths only |
+| `GET /api/media/<id>/<file>` | Member token (header, or `?t=` for `<video>`); streams the cached thumbnail, image or video with Range pass-through; private, immutable cache |
 | `POST /api/sync` | Member token; `{protocol:1, since, mutations[≤25]}`; versioned compare-and-swap, tombstones, idempotent receipts, paginated change stream |
 
 The preview server does not execute these Functions. Mocked-fetch tests check their code, not live upstream compatibility.
@@ -82,6 +84,13 @@ Client state: `outbox` (one entry per record, newest write wins, written in the 
 Server: D1 tables `trips`, `members`, `records`, `changes`, `mutation_receipts`, `invites`. A put or delete is accepted only when `baseVersion` equals the current version; the UPDATE carries `AND version=?` and a zero-row result is reported as a conflict, so a lost race never produces a false receipt. The receipt stores a request hash and the exact response, so a retry gets the same answer and a reused id with different content is refused. Responses page the change stream 200 at a time with a cursor. Tests: `tests/sync.test.mjs` runs the real Functions over a node:sqlite stand-in for D1; `tests/sync_stories.py` drives two Chromium contexts against `wrangler pages dev` with a local D1 through create, join, concurrent edit, both resolutions, delete, wrong passphrase, invite rotation and leave.
 
 Not done, on purpose: sessions as HttpOnly cookies (the token header is simpler for a PWA and the origin check still applies), key rotation, member removal, viewer UI, R2 photos, rate limiting at the edge (dashboard setting, see docs/04).
+
+## 8b. Social posts and votes (14 September 2026)
+A find can carry a social post. The phone sends the link to `/api/unfurl`; the Function forwards it with a shared secret to a small Node service on the owner's work-claw box (`seoul-fetcher.mjs`, systemd unit `seoul-fetcher`), published only through Tailscale Funnel at `https://work-claw.taila1733d.ts.net`. The service runs yt-dlp, keeps the thumbnail and an mp4 of at most 45 MB and 720p under `/home/openclaw/seoul-media/<sha256(url)[:20]>/`, and serves them back with Range support. Instagram needs a logged-in session; the cookies of the owner's own Instagram account (Chrome profile "christopher", account thesporkwhale) are exported to `~/.openclaw/workspace/.secrets/instagram-cookies.txt` with `~/refresh-ig-cookies.sh` on the Mac. TikTok, YouTube, Naver and X need none. Refresh the cookies when Instagram fetches start failing; a cookie export usually lasts weeks.
+
+What syncs is metadata only (`media`: id, provider, author, caption, kind, durations, `/api/media` paths, original url) plus `sharedBy`. Each phone fetches the thumbnail itself with its member token and stores it as a local photo, so cards work offline; the video streams on demand with the member token in the query string, under `Referrer-Policy: no-referrer`. The fetcher secret and origin exist only as Pages secrets and in the box's env file.
+
+Votes are their own record kind (`vote`, id `v-<placeId>-<deviceId>`), one per phone per find, so two phones never race on one row; the change stream carries `kind` (migration 0003). A vote conflict is retried on top of the server version automatically because only the owning phone ever writes it.
 
 ## 8a. Original sharing design (kept for reference)
 ### Membership and access
