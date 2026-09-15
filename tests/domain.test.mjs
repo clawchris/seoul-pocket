@@ -40,3 +40,12 @@ test('social media attachments and votes are validated before they are stored or
  assert.throws(()=>cleanVote({id:'v-p2-0123456789ab',placeId:'p1',vote:'in'}),/Invalid vote/);
  assert.equal(cleanVote({id:'v-p1-0123456789ab',placeId:'p1',vote:'maybe'}).vote,'in');
 });
+
+test('a card title from a social caption is one short clause, never the whole caption',async()=>{
+ const {postName}=await import('../public/src/domain.js');
+ assert.equal(postName({title:'Video by seoulfoodmeatco',caption:'We don’t talk about bruno….but with this food menu, we might have to!! Introducing bruno exclusive a la carte 🍴',author:'Seoul Food Meat Company'}),'We don’t talk about bruno');
+ assert.equal(postName({caption:'#seoul #foodie https://t.co/x Gwangjang market night eats are unreal and you should absolutely go there twice'}).length<=59,true);
+ assert.equal(postName({caption:'   ',author:'someone'}),'someone');
+ assert.equal(postName({}),'Shared post');
+ assert.equal(postName({title:'Best tteokbokki in Sindang'}),'Best tteokbokki in Sindang');
+});

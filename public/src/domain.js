@@ -18,6 +18,17 @@ export function cleanMedia(raw){
   if(!raw||typeof raw!=='object'||typeof raw.id!=='string'||!/^[a-f0-9]{20}$/.test(raw.id))return null;
   return {id:raw.id,provider:text(raw.provider,30),author:text(raw.author,80),caption:text(raw.caption,600),title:text(raw.title,140),kind:raw.kind==='image'?'image':'video',durationS:Number.isFinite(Number(raw.durationS))?Math.max(0,Math.round(Number(raw.durationS))):0,width:Number.isSafeInteger(raw.width)?raw.width:0,height:Number.isSafeInteger(raw.height)?raw.height:0,url:safeURL(raw.url)||'',thumb:mediaPath(raw.thumb),video:mediaPath(raw.video),image:mediaPath(raw.image)};
 }
+/** A card title from a social caption: the first clause, short enough to read at a glance. The full caption stays in the note. */
+export function postName(meta,fallback='Shared post'){
+  const titled=text(meta?.title,140),caption=text(meta?.caption,600);
+  let base=titled&&!/^(video|photo|post|reel) by /i.test(titled)?titled:caption;
+  base=String(base||'').replace(/https?:\/\/\S+/g,' ').replace(/#[^\s#]+/g,' ').replace(/\s+/g,' ').trim();
+  const stop=base.search(/[.!?\n]|\.{3}|…/); if(stop>12)base=base.slice(0,stop);
+  base=base.trim();
+  if(base.length>58){const cut=base.slice(0,58);const sp=cut.lastIndexOf(' ');base=(sp>24?cut.slice(0,sp):cut).trim()+'…';}
+  base=base.replace(/[\s,;:·\-]+$/,'');
+  return text(base,140)||text(meta?.author,80)||fallback;
+}
 export function cleanVote(raw){
   if(!raw||typeof raw!=='object'||typeof raw.id!=='string'||!/^v-[a-zA-Z0-9_-]{1,90}-[a-f0-9]{12}$/.test(raw.id))throw new Error('Invalid vote.');
   const placeId=text(raw.placeId,90);if(!placeId||!raw.id.startsWith('v-'+placeId+'-'))throw new Error('Invalid vote.');

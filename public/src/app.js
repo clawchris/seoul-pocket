@@ -1,5 +1,5 @@
 import * as db from './db.js';
-import {cleanPlace,convert,parseAmount,validateRate,staleRate,seoulDate,mapLinks,safeURL,validDate,text} from './domain.js';
+import {cleanPlace,postName,convert,parseAmount,validateRate,staleRate,seoulDate,mapLinks,safeURL,validDate,text} from './domain.js';
 import {seal,unseal} from './crypto.js';
 import {preparePhoto,serializePhotos,deserializePhotos,downloadFile} from './media.js';
 import {registerWorker,checkOffline,requestPersistence,acceptUpdate} from './offline.js';
@@ -264,8 +264,7 @@ async function shareFromForm(form){
  try{
   const url=text(input.value,600);if(!/^https:\/\//.test(url))throw new Error('Paste a full https link.');
   const {meta,photo}=await sync.unfurl(url);
-  const caption=String(meta.caption||'').trim(),first=caption.split(/\n/)[0].trim();
-  const name=(meta.title&&!/^(video|photo|post) by /i.test(meta.title)?meta.title:first||meta.author||'Shared post').slice(0,140);
+  const caption=String(meta.caption||'').trim(),name=postName(meta);
   const food=/food|맛집|restaurant|cafe|카페|coffee|eat|menu|bbq|chicken|noodle|ramen|dessert|bakery|bar|drink|brunch|dinner|lunch|snack|street food|market/i.test(caption+' '+name);
   const place=cleanPlace({id:crypto.randomUUID(),name,korean:'',kind:food?'food':'place',neighborhood:'',address:'',note:caption,links:[meta.url||url],lat:'',lng:'',source:'shared:'+(meta.provider||'link'),checkedAt:'',priority:false,photoId:photo?.id||'',media:meta,sharedBy:state.trip?.memberName||''});
   await db.savePlace(place,0,photo,await sync.mutationFor(place));sync.kick();input.value='';await load();render();toast('Shared with the group. Tap it to fix the name or add notes.');showPlace(getPlace(place.id));
