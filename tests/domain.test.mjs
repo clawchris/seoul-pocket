@@ -49,3 +49,16 @@ test('a card title from a social caption is one short clause, never the whole ca
  assert.equal(postName({}),'Shared post');
  assert.equal(postName({title:'Best tteokbokki in Sindang'}),'Best tteokbokki in Sindang');
 });
+
+test('trip-guide content is well formed and cannot collide with other saved ideas',async()=>{
+ const g=await import('../public/src/guide.js');
+ const {LOCAL_IDEAS}=await import('../public/src/locality.js');const {STARTERS}=await import('../public/src/data.js');
+ const all=[...g.INTERESTS,...g.FOODS,...LOCAL_IDEAS,...STARTERS];
+ assert.equal(new Set(all.map(x=>x.id)).size,all.length,'idea IDs collide across lists');
+ for(const p of g.INTERESTS){assert.ok(p.name&&p.korean&&p.note&&p.tag,p.id);assert.ok(['food','place'].includes(p.kind),p.id);assert.ok(['A','B'].includes(p.tier),p.id);assert.ok(!/\bopen(s|ing)? (at|from|daily)\b|guaranteed|\bbooked\b/i.test(p.note),'no invented hours or bookings: '+p.id);}
+ for(const f of g.FOODS)assert.ok(f.name&&f.korean&&f.note,f.id);
+ assert.equal(new Set(g.DAY_PLANS.map(d=>d.id)).size,g.DAY_PLANS.length);
+ assert.equal(g.GUIDE_DATES.start,'2026-09-28');assert.equal(g.GUIDE_DATES.end,'2026-10-05');
+ assert.ok(g.INTERESTS.filter(p=>p.tier==='A').length>=8);
+ assert.ok(g.SEARCH_NAMES.every(n=>n.en&&n.ko));
+});

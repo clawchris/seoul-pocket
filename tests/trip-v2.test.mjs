@@ -8,7 +8,7 @@ import {cleanStay,mergeStayAddress} from '../public/src/stay.js';
 import {STAY_SEED} from '../public/src/stay-seed.js';
 import {validEnvelope,unseal} from '../public/src/crypto.js';
 import {validateSnapshot} from '../public/src/db.js';
-test('checklist has twelve stable unique IDs and counts only true confirmations',()=>{assert.equal(CHECKLIST.length,12);assert.equal(new Set(CHECKLIST.map(x=>x.id)).size,12);assert.deepEqual(checklistProgress({documents:true,maps:true,offline:'true'}),{done:2,total:12});});
+test('checklist IDs are unique and stable, and progress counts only true confirmations',()=>{const n=CHECKLIST.length;assert.equal(n,19);assert.equal(new Set(CHECKLIST.map(x=>x.id)).size,n);for(const id of ['documents','maps','offline','install','backup','popup-check','airport-route'])assert.ok(CHECKLIST.some(x=>x.id===id),id);assert.deepEqual(checklistProgress({documents:true,maps:true,offline:'true'}),{done:2,total:n});assert.equal(CHECKLIST.filter(x=>x.device).length,8);});
 test('device confirmations cannot be restored as travel-wide completions',()=>{for(const x of CHECKLIST)assert.equal(restorableChecklist(checklistMetaKey(x.id)),!x.device);assert.throws(()=>checklistMetaKey('unknown'));});
 test('invalid checklist metadata in backups is rejected',()=>{assert.throws(()=>validateChecklistRecord('check:maps','true'));assert.throws(()=>validateSnapshot({schema:1,places:[],photos:[],meta:[{id:'check:offline',value:'yes'}]}));});
 test('six local ideas have valid sources and can be saved in the existing model',()=>{assert.equal(LOCAL_IDEAS.length,6);for(const p of LOCAL_IDEAS){assert.ok(safeURL(p.sourceURL));assert.ok(cleanPlace({...p,links:[p.sourceURL]}).name);assert.equal(p.lat,undefined);assert.equal(p.lng,undefined);}});

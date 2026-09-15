@@ -11,6 +11,7 @@ import {ZONES,wallInput,wallToInstants,compareZones,zoneRow} from './timezones.j
 import {validateForecast,forecastState,formatTemperature,weatherDescription,WEATHER_REFRESH_MS,WEATHER_LOCATION} from './weather.js';
 import {CHECKLIST,checklistProgress,checklistMetaKey} from './checklist.js';
 import {LOCAL_IDEAS,LOCAL_TRANSIT,LOCAL_REVIEW_DATE} from './locality.js';
+import {INTERESTS,INTEREST_NOTES,SEARCH_NAMES,FOODS,FOOD_EXPERIENCES,CONDIMENTS,DAY_PLANS,AREAS,GUIDE_TRANSIT,CULTURE_NOTES,GUIDE_REVIEW_DATE,GUIDE_DATES} from './guide.js';
 import {APPS} from './apps.js';
 import {loadKakaoSdk,renderMap} from './map.js';
 import {kakaoMapLinks} from './domain.js';
@@ -19,7 +20,7 @@ import * as sync from './sync.js';
 import {cleanStay,mergeStayAddress} from './stay.js';
 const $=s=>document.querySelector(s);
 const main=$('#main'),sheet=$('#sheet');
-const state={tab:'today',places:[],prefs:{name:'Our Seoul trip',start:'',end:''},rate:null,filter:'all',query:'',phraseCategory:'All',phraseQuery:'',vault:null,vaultExists:false,pinVisible:false,formDirty:false,modalKind:'',update:null,apiToken:'',offline:null,searchResults:[],idle:0,toolPrefs:{currencyFrom:'KRW',weatherUnit:'C'},amount:'10000',weather:null,weatherBusy:false,weatherError:'',weatherAttempt:0,checklist:{},tz:{source:'seoul',instant:Date.now(),live:true,candidates:[],error:''},config:null,buzz:new Map()};
+const state={tab:'today',places:[],prefs:{name:'Our Seoul trip',start:GUIDE_DATES.start,end:GUIDE_DATES.end},rate:null,filter:'all',query:'',phraseCategory:'All',phraseQuery:'',vault:null,vaultExists:false,pinVisible:false,formDirty:false,modalKind:'',update:null,apiToken:'',offline:null,searchResults:[],idle:0,toolPrefs:{currencyFrom:'KRW',weatherUnit:'C'},amount:'10000',weather:null,weatherBusy:false,weatherError:'',weatherAttempt:0,checklist:{},tz:{source:'seoul',instant:Date.now(),live:true,candidates:[],error:''},config:null,buzz:new Map()};
 const photoURLs=new Map();
 const tabNames={today:'Today',saved:'Saved',speak:'Speak',tools:'Tools',trip:'Trip'};
 const statusNames={saved:'Want to go',planned:'Planned',visited:'Been there',skipped:'Skip for now'};
@@ -77,7 +78,7 @@ function savedView(){return `${pageTop('Worth a detour.','Restaurants, places, a
  <div class="search-field">${icon('search')}<input id="place-search" aria-label="Search saved places" type="search" placeholder="Name, neighborhood, or note" value="${e(state.query)}"></div>
  <div class="filters" aria-label="Filter saved places">${[['all','Everything'],['food','Food & drink'],['place','Places'],['must','Must-try checklist'],['visited','Been there']].map(([v,label])=>button(label,'filter','chip '+(state.filter===v?'active':''),`data-filter="${v}" aria-pressed="${state.filter===v}"`)).join('')}</div>
  <div id="saved-results">${savedResults()}</div>
- <div class="row wrap spacer">${button(icon('pin')+' Map','map','secondary')}${button('Near our stay','local-ideas','secondary')}${button('More Seoul ideas','starters','link-button')}${button('Search places','naver','link-button')}</div><p class="caption spacer">Saved items are on this device only. Group sync is specified, but not connected in this starter.</p>`;}
+ <div class="row wrap spacer">${button(icon('pin')+' Map','map','secondary')}${button('Near our stay','local-ideas','secondary')}${button('Gaming & K-pop','interests','secondary')}${button('More Seoul ideas','starters','link-button')}${button('Search places','naver','link-button')}</div><p class="caption spacer">Saved items are on this device only. Group sync is specified, but not connected in this starter.</p>`;}
 function savedResults(){const items=filteredPlaces();return items.length?`<p class="caption">${items.length} ${items.length===1?'find':'finds'} · Tap a card to see links, notes, and directions.</p><div class="places-grid">${items.map(placeCard).join('')}</div>`:`<div class="empty"><h3>${state.query?'No matches yet.':'Start with something you love.'}</h3><p>${state.query?'Try a different word, or clear your search.':'Add a place, a dish you want to try, or a link someone sent you. You can add the address later.'}</p>${button('Save a find','new','primary')}</div>`;}
 function speakView(){return `${pageTop('A few words go a long way.','Tap to listen, or show a large Korean card.')}
  <div class="notice neutral">Pronunciation guides are approximate. Listen plays a bundled Korean voice that works offline; it is machine-generated, so show the Korean card when it matters.</div>
@@ -87,6 +88,8 @@ function phraseResults(){const items=PHRASES.filter(p=>(state.phraseCategory==='
 function toolsView(){return `${pageTop('Everyday tools.','Currency, weather, and the three time zones you use.')}<div class="tool-columns"><section class="card"><div class="row between"><h2>Currency</h2>${icon('won')}</div>${converterMarkup()}</section><section>
  ${toolLink('Time zones','Seoul · Singapore · Cupertino (PT)','clock','timezone')}
  ${toolLink('Predeparture checklist','Your saved preparation checks','check','checklist')}
+ ${toolLink('Food to try','13 dishes worth one meal each','food','foods')}
+ ${toolLink('Plan a day','Eight day shapes by neighborhood','pin','dayplans')}
  ${toolLink('Transport guide','Guui, transit cards & routes','train','transport')}
  ${toolLink('Apps on your phone','Naver Map, Kakao Map, Papago, Kakao T','external','apps')}
  ${toolLink('Emergency & travel help','112 police · 119 ambulance / fire','shield','help')}
@@ -215,7 +218,28 @@ function showStay(){
  <p class="caption">The door PIN is never placed in map links or the printed fallback card. Avoid screenshots containing it.</p>${button('Edit stay','stay-edit','link-button full')}<details><summary>Use the address supplied for this trip</summary><p class="caption">Load the encrypted preconfigured address without discarding your PIN, Wi-Fi or other stay fields. You review and save the change.</p>${button('Use supplied address','merge-stay','secondary full')}</details>`,'stay-view');startIdle();
 }
 function helpSheet(){openSheet('Help in Korea',`<p class="sheet-subtitle">Emergency numbers are available in this app offline. Calling still needs a working telephone connection.</p><div class="emergency-grid"><a href="tel:112"><strong>112</strong>Police</a><a href="tel:119"><strong>119</strong>Ambulance / fire</a></div><div class="card spacer"><h3>1330 travel helpline</h3><p class="small">Travel information and interpretation support. Use the official site for current service hours and online call/chat options.</p><div class="row wrap"><a class="secondary" href="tel:1330">Call 1330</a>${external('Online help','https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=140632')}</div></div><p class="caption spacer">A data-only SIM may not provide regular voice calling. Check your phone plan before travel. This app does not contact emergency services automatically.</p>${button('Show “Please help me”','phrase-card','secondary full','data-id="help"')}<p class="source-link spacer">Sources reviewed ${REVIEW_DATE}: ${external('Visit Seoul safety','https://english.visitseoul.net/safety')}</p>`,'help');}
-function transportSheet(){openSheet('Getting around Seoul',`<div class="notice neutral">Let Naver Maps handle live routes. Keep names, exit numbers, and screenshots here for the moments without signal.</div>${[...LOCAL_TRANSIT,...TRAVEL].map(t=>`<section class="spacer"><h3>${e(t.title)}</h3><p class="small">${e(t.body)}</p>${external('Official information',t.source)}</section>`).join('')}<p class="caption spacer">Research date: ${REVIEW_DATE}. Recheck fare, service area, and airport rules for your actual travel dates.</p>`,'transport');}
+function transportSheet(){openSheet('Getting around Seoul',`<div class="notice neutral">Let Naver Maps handle live routes. Keep names, exit numbers, and screenshots here for the moments without signal.</div>${[...LOCAL_TRANSIT,...TRAVEL].map(t=>`<section class="spacer"><h3>${e(t.title)}</h3><p class="small">${e(t.body)}</p>${external('Official information',t.source)}</section>`).join('')}${GUIDE_TRANSIT.map(t=>`<section class="spacer"><h3>${e(t.title)}</h3><p class="small">${e(t.body)}</p></section>`).join('')}<details class="spacer"><summary>Small things that are different</summary><ul class="small">${CULTURE_NOTES.map(n=>`<li>${e(n)}</li>`).join('')}</ul></details><p class="caption spacer">Research date: ${REVIEW_DATE}. Recheck fare, service area, and airport rules for your actual travel dates.</p>`,'transport');}
+function ideaCard(p,extra=''){const saved=state.places.some(x=>x.source==='idea:'+p.id);return `<div class="card"><span class="tag ${p.kind==='food'?'warm':''}">${p.kind==='food'?'Food idea':'Place idea'}</span>${extra}<h3 class="spacer">${e(p.name)}</h3><p lang="ko" class="small">${e(p.korean)}</p><p class="caption">${e(p.neighborhood||'Seoul')}</p><p class="small muted">${e(p.note)}</p><div class="row wrap">${button(saved?'Already saved':'Add to saved finds','add-starter','secondary',`data-id="${p.id}" ${saved?'disabled':''}`)}${p.sourceURL?external('Source',p.sourceURL):''}</div></div>`;}
+function interestsSheet(){
+ const tier=t=>INTERESTS.filter(p=>p.tier===t);
+ const group=(t,label)=>`<h3 class="spacer">${label}</h3><div class="stack">${tier(t).map(p=>ideaCard(p,`<span class="tag gray">${e(p.tag)}</span>`)).join('')}</div>`;
+ openSheet('Gaming & K-pop',`<p class="sheet-subtitle">From your own trip guide: League of Legends, Final Fantasy, Lost Ark, Tree of Savior, Stellar Blade, TWICE, 4Minute, SISTAR and HYOLYN, MAMAMOO, Jay Park and KPop Demon Hunters. Add what appeals; none of this is booked or hour-checked.</p>
+ <div class="notice neutral"><strong>Read before you plan a day around one of these.</strong><ul class="small">${INTEREST_NOTES.map(n=>`<li>${e(n)}</li>`).join('')}</ul></div>
+ ${group('A','Your shortlist')}${group('B','Worth adding if the day allows')}
+ <details class="spacer"><summary>Korean names to search</summary><div class="stack">${SEARCH_NAMES.map(n=>`<p class="small">${e(n.en)} · <span lang="ko">${e(n.ko)}</span></p>`).join('')}</div></details>
+ <p class="caption spacer">From your trip guide, ${GUIDE_REVIEW_DATE}. Pop-ups and collaborations change; check each one in Naver Map close to the day.</p>`,'interests');
+}
+function foodsSheet(){
+ openSheet('Food to try',`<p class="sheet-subtitle">Categories rather than famous restaurants, so you eat a broad picture of Korea. Add any of them as a find to hunt down.</p><div class="stack">${FOODS.map(f=>{const saved=state.places.some(x=>x.source==='idea:'+f.id);return `<div class="card"><h3>${e(f.name)}</h3><p lang="ko" class="small">${e(f.korean)}</p><p class="small muted">${e(f.note)}</p>${button(saved?'Already saved':'Add to saved finds','add-starter','secondary',`data-id="${f.id}" ${saved?'disabled':''}`)}</div>`;}).join('')}</div>
+ <h3 class="spacer">Do each of these once</h3><ul class="small">${FOOD_EXPERIENCES.map(x=>`<li>${e(x)}</li>`).join('')}</ul>
+ <details class="spacer"><summary>Condiments to look for</summary><div class="stack">${CONDIMENTS.map(c=>`<p class="small"><strong>${e(c.name)}</strong> <span lang="ko">${e(c.korean)}</span> · ${e(c.note)}</p>`).join('')}</div></details>
+ <p class="caption spacer">From your trip guide, ${GUIDE_REVIEW_DATE}.</p>`,'foods');
+}
+function dayPlansSheet(){
+ openSheet('Plan a day',`<p class="sheet-subtitle">Seoul is big. Group a day by neighborhood instead of crossing the city twice, and you get hours back.</p><div class="stack">${DAY_PLANS.map(d=>`<div class="card"><h3>${e(d.title)}</h3><p class="small">${e(d.body)}</p></div>`).join('')}</div>
+ <h3 class="spacer">What is near your stay</h3><div class="stack">${AREAS.map(x=>`<p class="small"><strong>${e(x.name)}</strong> · ${e(x.body)}</p>`).join('')}</div>
+ <p class="caption spacer">From your trip guide, ${GUIDE_REVIEW_DATE}. These are shapes for a day, not a fixed itinerary.</p>`,'dayplans');
+}
 function startersSheet(local=false){const items=local?LOCAL_IDEAS:STARTERS;openSheet(local?'Around Guui & east Seoul':'More Seoul ideas',`<p class="sheet-subtitle">${local?'Ideas informed by your stay in Gwangjin.':'A starting point, not a ranked list.'} Choose only what appeals to you. These are not bookings, verified hours or measured walking routes.</p><div class="stack">${items.map(p=>{const saved=state.places.some(x=>x.source==='idea:'+p.id);return `<div class="card"><span class="tag ${p.kind==='food'?'warm':''}">${p.kind==='food'?'Food idea':'Place idea'}</span><h3 class="spacer">${e(p.name)}</h3><p lang="ko" class="small">${e(p.korean)}</p><p class="caption">${e(p.neighborhood||'Seoul')}</p><p class="small muted">${e(p.note)}</p><div class="row wrap">${button(saved?'Already saved':'Add to saved finds','add-starter','secondary',`data-id="${p.id}" ${saved?'disabled':''}`)}${external('Source',p.sourceURL)}</div></div>`;}).join('')}</div><p class="caption spacer">Sources checked ${LOCAL_REVIEW_DATE}. Verify the exact destination and current opening details in Naver before heading out.</p>`,local?'local-ideas':'starters');}
 
 function preferences(){openSheet('Make it your trip',`<form data-form="preferences">${field('Trip name','name',state.prefs.name,'text','required maxlength="80"')}${field('Arrival date · Seoul','start',state.prefs.start,'date')}${field('Departure date · Seoul','end',state.prefs.end,'date')}<p class="form-help">Planning dates and the Today screen always use Asia/Seoul. Your actual dates have not been inferred.</p><p class="form-error" role="alert"></p><button type="submit" class="primary full">Save trip settings</button></form>`,'preferences');}
@@ -376,6 +400,9 @@ document.addEventListener('click',async ev=>{
    case 'help':helpSheet();break;
    case 'transport':transportSheet();break;
    case 'starters':startersSheet();break;
+   case 'interests':interestsSheet();break;
+   case 'foods':foodsSheet();break;
+   case 'dayplans':dayPlansSheet();break;
    case 'local-ideas':startersSheet(true);break;
    case 'apps':appsSheet();break;
    case 'share-create':shareCreateSheet();break;
@@ -391,7 +418,7 @@ document.addEventListener('click',async ev=>{
    case 'map':await mapSheet();break;
    case 'map-pick':closeSheet(true,true);showPlace(getPlace(id));break;
    case 'buzz':await loadBuzz(getPlace(id),b);break;
-   case 'add-starter':{const p=[...LOCAL_IDEAS,...STARTERS].find(x=>x.id===id);if(p){if(state.places.some(x=>x.source==='idea:'+p.id)){toast('This idea is already saved.');break;}{const np=cleanPlace({...p,id:crypto.randomUUID(),links:[p.sourceURL,p.extraSource].filter(Boolean),source:'idea:'+p.id,checkedAt:'',priority:false});await db.savePlace(np,0,null,await sync.mutationFor(np));sync.kick();}await load();render();b.textContent='Already saved';b.disabled=true;toast('Idea saved. Mark it must-try only when you choose.');}break;}
+   case 'add-starter':{const p=[...LOCAL_IDEAS,...STARTERS,...INTERESTS,...FOODS.map(f=>({...f,kind:'food',neighborhood:'',sourceURL:''}))].find(x=>x.id===id);if(p){if(state.places.some(x=>x.source==='idea:'+p.id)){toast('This idea is already saved.');break;}{const np=cleanPlace({...p,id:crypto.randomUUID(),links:[p.sourceURL,p.extraSource].filter(Boolean),source:'idea:'+p.id,checkedAt:'',priority:false});await db.savePlace(np,0,null,await sync.mutationFor(np));sync.kick();}await load();render();b.textContent='Already saved';b.disabled=true;toast('Idea saved. Mark it must-try only when you choose.');}break;}
    case 'phrase-card':phraseCard(id);break;
    case 'listen':{const p=PHRASES.find(x=>x.id===id);if(p){const mode=await speakPhrase(p);toast(mode==='recording'?'Playing reviewed recording.':mode==='generated'?'Playing bundled Korean voice. Works offline; not yet native-speaker reviewed.':'Playing Korean device voice. Offline reliability still needs testing.');}break;}
    case 'preferences':preferences();break;

@@ -96,8 +96,8 @@
  },
  {
   "id": "S31",
-  "result": "PASS",
-  "note": "Playing bundled Korean voice. Works offline; not yet native-speaker reviewed."
+  "result": "FAIL",
+  "note": "Deleted from this device. @line 206"
  },
  {
   "id": "S32",
