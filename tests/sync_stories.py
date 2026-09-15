@@ -110,7 +110,8 @@ def main():
         story('T08 leaving keeps local finds and returns the phone to local-only', t08)
         def t09():
             tab(A, 'today'); box = A.locator('main .share-box').first; assert box.count() == 1, 'share box missing on Today'
-            assert A.evaluate("()=>{const b=document.querySelector('main .share-box'),h=document.querySelector('main .hero');return b.getBoundingClientRect().top<400&&b.getBoundingClientRect().top>h.getBoundingClientRect().top;}"), 'share box is not near the top'
+            assert A.evaluate("()=>{const b=document.querySelector('main .share-box'),h=document.querySelector('main .hero');return b.getBoundingClientRect().top<h.getBoundingClientRect().top;}"), 'share box is not the first thing on Today'
+            assert A.evaluate("()=>document.querySelector('main .share-box').getBoundingClientRect().top<260"), 'share box is not near the top of the viewport'
             assert A.locator('main .share-box input').count() == 1, 'more than one field in the share box'
             A.fill('main .share-box input[name="url"]', 'https://www.instagram.com/reel/DBhP4P8i4aj/?igsh=test'); A.click('main .share-box button[type="submit"]')
             A.wait_for_function("()=>document.querySelector('#sheet')?.open && document.querySelector('#sheet .media-block')", timeout=180000)
