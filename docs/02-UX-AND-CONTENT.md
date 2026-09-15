@@ -28,6 +28,9 @@ Food/place and visit-status choices use visible radio chips. Near our stay opens
 ## Predeparture checklist
 Two groups, twelve large checkbox rows, saved X/12 progress, links to relevant existing tools. Check only after doing the task. Saving an item must complete before claiming success; on failure restore the previous visual state. User confirmations are not automatic proof of readiness. Device-specific confirmations are not transferable through backup. General preparation confirmations may import only into previously missing keys.
 
+## Sharing a post (14 September 2026)
+A single link box sits at the top of Today, directly under the hero, and at the top of Saved. It has one field and one button. Paste, tap Share, and the post becomes a find that opens on its own. No other input is asked for; the name and note are prefilled from the post and can be edited afterwards. Outside a shared trip the box explains that sharing needs a trip and offers to set one up. Save a find stays the manual form.
+
 ## Home Screen install (9 September 2026)
 A Today card, shown only when the app is running in a browser tab and not yet dismissed, explains why the Home Screen icon matters and opens a five-step Safari guide (Share, Add to Home Screen, Add). The same guide is reachable from Trip → Install on your iPhone and from the checklist item. The guide says plainly that the tab and the icon share one storage on the phone, and what to do when the option is missing inside an in-app browser. Dismissal is per device.
 

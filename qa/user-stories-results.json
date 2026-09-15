@@ -40,6 +40,11 @@
   "note": ""
  },
  {
+  "id": "S16",
+  "result": "PASS",
+  "note": "card, 5-step guide, Trip link, dismissal persists"
+ },
+ {
   "id": "S20",
   "result": "PASS",
   "note": ""
@@ -172,7 +177,7 @@
  {
   "id": "S57",
   "result": "PASS",
-  "note": "seoul-pocket-backup-2026-09-09.json"
+  "note": "seoul-pocket-backup-2026-09-15.json"
  },
  {
   "id": "S58",
@@ -192,7 +197,7 @@
  {
   "id": "S28",
   "result": "PASS",
-  "note": "송화양꼬치"
+  "note": "화양양꼬치"
  },
  {
   "id": "S61",

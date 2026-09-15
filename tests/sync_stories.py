@@ -109,14 +109,16 @@ def main():
             B.reload(); B.wait_for_selector('#nav'); expect(B.locator('#connection')).to_contain_text('not shared')
         story('T08 leaving keeps local finds and returns the phone to local-only', t08)
         def t09():
-            tab(A, 'today'); A.click('[data-action="new"]'); expect(A.locator('#sheet-title')).to_have_text('Save a find from a link')
-            A.fill('form[data-form="link"] input[name="url"]', 'https://www.instagram.com/reel/DBhP4P8i4aj/?igsh=test'); A.click('form[data-form="link"] button[type="submit"]')
-            A.wait_for_function("()=>document.querySelector('#sheet-title')?.textContent && !/Save a find/.test(document.querySelector('#sheet-title').textContent)", timeout=180000)
-            title = A.locator('#sheet-title').inner_text(); assert title and 'Save a find' not in title, title
+            tab(A, 'today'); box = A.locator('main .share-box').first; assert box.count() == 1, 'share box missing on Today'
+            assert A.evaluate("()=>{const b=document.querySelector('main .share-box'),h=document.querySelector('main .hero');return b.getBoundingClientRect().top<400&&b.getBoundingClientRect().top>h.getBoundingClientRect().top;}"), 'share box is not near the top'
+            assert A.locator('main .share-box input').count() == 1, 'more than one field in the share box'
+            A.fill('main .share-box input[name="url"]', 'https://www.instagram.com/reel/DBhP4P8i4aj/?igsh=test'); A.click('main .share-box button[type="submit"]')
+            A.wait_for_function("()=>document.querySelector('#sheet')?.open && document.querySelector('#sheet .media-block')", timeout=180000)
+            title = A.locator('#sheet-title').inner_text()
             expect(A.locator('#sheet .media-block')).to_contain_text('instagram'); expect(A.locator('#sheet .media-block')).to_contain_text('shared by Alpha')
             assert A.locator('#sheet video[data-media-src]').count() == 1; A.wait_for_function("()=>{const v=document.querySelector('#sheet video');return v&&v.poster&&v.src.includes('/api/media/');}", timeout=10000)
             expect(A.locator('#sheet .vote-row')).to_contain_text('Nobody has answered yet'); A.click('[data-action="close"]')
-            tab(A, 'saved'); A.wait_for_function("()=>[...document.querySelectorAll('.place-card .place-thumb[data-photo]')].length>=1", timeout=10000)
+            tab(A, 'saved'); assert A.locator('main .share-box').count() == 1, 'share box missing on Saved'; A.wait_for_function("()=>[...document.querySelectorAll('.place-card .place-thumb[data-photo]')].length>=1", timeout=10000)
             return title
         story('T09 a pasted Instagram link becomes a find with thumbnail, caption, video and a vote row', t09)
         def t10():

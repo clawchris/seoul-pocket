@@ -57,6 +57,7 @@ function todayView(){
  const clock=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',hour:'numeric',minute:'2-digit'}).format(new Date());
  const progress=checklistProgress(state.checklist);
  return `<div class="home-layout"><section class="hero"><div class="row between"><span class="time" id="seoul-clock">${e(clock)} KST · Gwangjin</span></div><h1>Your Seoul trip.<br>Ready when you are.</h1><p>Your saved places, stay details, and everyday travel tools.</p><div class="hero-bottom"><span class="tag dark">${state.prefs.start?e(state.prefs.start+' → '+(state.prefs.end||'Set end date')):'Trip dates not set'}</span>${button(icon('arrow'),'preferences','hero-link','aria-label="Set trip dates"')}</div></section>
+ ${shareBox()}
  <div class="grid2"><button class="quick-card" ${action('stay')}><span class="icon-tile">${icon('lock')}</span><strong>Our stay</strong><span class="caption">Address, Naver & entry details</span></button><button class="quick-card" ${action('convert')}><span class="icon-tile">${icon('won')}</span><strong>Currency</strong><span class="caption">KRW ⇄ USD · one-tap swap</span></button><button class="quick-card" ${action('transport')}><span class="icon-tile">${icon('train')}</span><strong>Get around</strong><span class="caption">Guui & Seoul transit</span></button><button class="quick-card" ${action('new')}><span class="icon-tile">${icon('plus')}</span><strong>Save a find</strong><span class="caption">Food, places & links</span></button></div></div>
  <section class="card spacer" data-weather="compact">${weatherMarkup(true)}</section>
  <button class="world-clock-strip spacer" ${action('timezone')} aria-label="Compare Seoul, Singapore and Cupertino time"><strong class="strip-title">Seoul, Singapore and Cupertino right now ${icon('arrow')}</strong><span class="world-clock-cells" data-live-clocks>${clockCells()}</span></button>
@@ -73,7 +74,7 @@ function filteredPlaces(){return state.places.filter(p=>{
  const filter=state.filter==='all'||p.kind===state.filter||(state.filter==='must'&&p.priority)||(state.filter==='visited'&&p.status==='visited');
  return filter&&[p.name,p.korean,p.neighborhood,p.note].join(' ').toLowerCase().includes(state.query.toLowerCase());
  });}
-function savedView(){return `${pageTop('Worth a detour.','Restaurants, places, and the reel you do not want to lose.',button(icon('plus'),'new','icon-button','aria-label="Add a place or food idea"'))}
+function savedView(){return `${pageTop('Worth a detour.','Restaurants, places, and the reel you do not want to lose.',button(icon('plus'),'new','icon-button','aria-label="Add a place or food idea"'))}${shareBox()}
  <div class="search-field">${icon('search')}<input id="place-search" aria-label="Search saved places" type="search" placeholder="Name, neighborhood, or note" value="${e(state.query)}"></div>
  <div class="filters" aria-label="Filter saved places">${[['all','Everything'],['food','Food & drink'],['place','Places'],['must','Must-try checklist'],['visited','Been there']].map(([v,label])=>button(label,'filter','chip '+(state.filter===v?'active':''),`data-filter="${v}" aria-pressed="${state.filter===v}"`)).join('')}</div>
  <div id="saved-results">${savedResults()}</div>
@@ -255,7 +256,24 @@ function voteRow(p){
  const names=l=>l.map(x=>e(x.name)).join(', ');
  return `<div class="vote-row"><div class="row wrap">${button(`${icon('check')} I’m in${v.ins.length?' · '+v.ins.length:''}`,'vote-in',v.mine==='in'?'primary':'secondary',`data-id="${e(p.id)}" aria-pressed="${v.mine==='in'}"`)}${button(`Pass${v.passes.length?' · '+v.passes.length:''}`,'vote-pass',v.mine==='pass'?'primary':'secondary',`data-id="${e(p.id)}" aria-pressed="${v.mine==='pass'}"`)}</div><p class="caption">${v.ins.length?'In: '+names(v.ins)+'. ':''}${v.passes.length?'Pass: '+names(v.passes)+'.':''}${!v.ins.length&&!v.passes.length?'Nobody has answered yet.':''}</p></div>`;
 }
-function linkSheet(){openSheet('Save a find from a link',`<p class="sheet-subtitle">Paste a TikTok, Instagram reel, YouTube, Naver or X link. The post, its picture and caption are saved and shared with the group.</p><form data-form="link">${field('Link','url','','url','required maxlength="600" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://www.instagram.com/reel/…"')}<p class="form-error" role="alert"></p><button class="primary full" type="submit">Save and share</button></form><p class="caption spacer">Instagram and TikTok need a connection to fetch. ${button('Add by hand instead','new-manual','text-button')}</p>`,'link');}
+function shareBox(){
+ return `<section class="share-box card"><form data-form="link" class="share-form"><input name="url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" placeholder="Paste a TikTok or Instagram link" aria-label="Link to a post" required maxlength="600"><button class="primary" type="submit">Share</button></form><p class="form-error" role="alert"></p><p class="caption">${state.trip?'TikTok, Instagram, YouTube, Naver or X. The post, its picture and caption go to the whole group.':'Sharing posts needs a shared trip. '+button('Set one up','share-create','text-button')}</p></section>`;
+}
+async function shareFromForm(form){
+ const submit=form.querySelector('[type="submit"]'),errBox=form.parentElement.querySelector('.form-error'),input=form.querySelector('input[name="url"]');
+ submit.disabled=true;errBox.textContent='';const label=submit.textContent;submit.textContent='Fetching…';
+ try{
+  const url=text(input.value,600);if(!/^https:\/\//.test(url))throw new Error('Paste a full https link.');
+  const {meta,photo}=await sync.unfurl(url);
+  const caption=String(meta.caption||'').trim(),first=caption.split(/\n/)[0].trim();
+  const name=(meta.title&&!/^(video|photo|post) by /i.test(meta.title)?meta.title:first||meta.author||'Shared post').slice(0,140);
+  const food=/food|맛집|restaurant|cafe|카페|coffee|eat|menu|bbq|chicken|noodle|ramen|dessert|bakery|bar|drink|brunch|dinner|lunch|snack|street food|market/i.test(caption+' '+name);
+  const place=cleanPlace({id:crypto.randomUUID(),name,korean:'',kind:food?'food':'place',neighborhood:'',address:'',note:caption,links:[meta.url||url],lat:'',lng:'',source:'shared:'+(meta.provider||'link'),checkedAt:'',priority:false,photoId:photo?.id||'',media:meta,sharedBy:state.trip?.memberName||''});
+  await db.savePlace(place,0,photo,await sync.mutationFor(place));sync.kick();input.value='';await load();render();toast('Shared with the group. Tap it to fix the name or add notes.');showPlace(getPlace(place.id));
+ }catch(err){errBox.textContent=errorMessage(err);}
+ finally{submit.disabled=false;submit.textContent=label;}
+}
+main.addEventListener('submit',ev=>{const form=ev.target;if(form.dataset.form!=='link')return;ev.preventDefault();shareFromForm(form);});
 const installed=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 function installCard(){if(installed()||state.installHidden)return '';return `<section class="notice neutral spacer" data-install-card><strong>Put Seoul Pocket on your Home Screen.</strong><p class="small">From the Home Screen icon it opens full screen, keeps working offline and stays signed in to the shared trip.</p><div class="row wrap">${button('Show me how','install','primary')}${button('Not now','install-hide','text-button')}</div></section>`;}
 function installSheet(){openSheet('Add to Home Screen',`<p class="sheet-subtitle">${installed()?'You are already using the Home Screen app.':'Takes about ten seconds in Safari.'}</p><ol class="steps"><li>Open <strong>seoul-pocket.pages.dev</strong> in <strong>Safari</strong>, not in a browser inside another app.</li><li>Tap the <strong>Share</strong> button, the square with an arrow pointing up, at the bottom of the screen.</li><li>Scroll the list and tap <strong>Add to Home Screen</strong>.</li><li>Tap <strong>Add</strong> in the top right. The icon says Seoul Pocket.</li><li>Open it from that icon from now on. Saved finds, the stay vault and the shared trip on the Safari tab and on the icon are the same data, because both live in this iPhone's Safari storage.</li></ol><p class="caption spacer">If Add to Home Screen is missing, you are in an in-app browser. Tap the compass or “Open in Safari” first.</p>`,'install');}
@@ -340,8 +358,7 @@ document.addEventListener('click',async ev=>{
   switch(a){
    case 'tab': if(sheet.open)closeSheet();state.tab=b.dataset.tab;location.hash=state.tab;render();window.scrollTo({top:0});main.focus({preventScroll:true});break;
    case 'close':closeSheet();break;
-   case 'new':state.trip?linkSheet():placeForm();break;
-   case 'new-manual':placeForm();break;
+   case 'new':placeForm();break;
    case 'vote-in':case 'vote-pass':{const p=getPlace(id);b.disabled=true;try{await sync.castVote(p,a==='vote-in'?'in':'pass');await load();render();showPlace(getPlace(id));}finally{b.disabled=false;}break;}
    case 'edit':placeForm(getPlace(id));break;
    case 'detail':showPlace(getPlace(id));break;
@@ -478,16 +495,6 @@ sheet.addEventListener('submit',async ev=>{
    }
    case 'connection':{
     const token=text(values.token,256);if(!/^[a-zA-Z0-9_-]{32,256}$/.test(token))throw new Error('Use the generated private proxy token from setup.');state.apiToken=token;closeSheet(true);toast('Place search token available until the app is backgrounded.');break;
-   }
-   case 'link':{
-    const url=text(values.url,600);if(!/^https:\/\//.test(url))throw new Error('Paste a full https link.');
-    submit.textContent='Fetching the post…';
-    const {meta,photo}=await sync.unfurl(url);
-    const caption=String(meta.caption||'').trim(),first=caption.split(/\n/)[0].trim();
-    const name=(meta.title&&!/^(video|photo|post) by /i.test(meta.title)?meta.title:first||meta.author||'Shared post').slice(0,140);
-    const food=/food|맛집|restaurant|cafe|카페|coffee|eat|menu|bbq|chicken|noodle|ramen|dessert|bakery|bar|drink|brunch|dinner|lunch|snack|street food|market/i.test(caption+' '+name);
-    const place=cleanPlace({id:crypto.randomUUID(),name,korean:'',kind:food?'food':'place',neighborhood:'',address:'',note:caption,links:[meta.url||url],lat:'',lng:'',source:'shared:'+(meta.provider||'link'),checkedAt:'',priority:false,photoId:photo?.id||'',media:meta,sharedBy:state.trip?.memberName||''});
-    await db.savePlace(place,0,photo,await sync.mutationFor(place));sync.kick();closeSheet(true);await load();render();toast('Saved and shared. Tap it to fix the name or add notes.');showPlace(getPlace(place.id));break;
    }
    case 'share-create':{
     if(values.passphrase!==values.confirm)throw new Error('The passphrases do not match.');
