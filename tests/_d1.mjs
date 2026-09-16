@@ -1,4 +1,6 @@
-/** Minimal D1 look-alike over node:sqlite for tests. Supports prepare().bind().first()/run()/all() and batch(). */
+/** Minimal D1 look-alike over node:sqlite for tests. Supports prepare().bind().first()/run()/all() and batch().
+ * batch() is a sequential loop over run(), not one atomic batch. A statement that throws partway through leaves the earlier ones
+ * applied, so no test here can show that a real D1 batch rolls back. tests/_idb.mjs carries the same note for the same reason. */
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
 export function fakeD1(){

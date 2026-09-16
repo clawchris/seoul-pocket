@@ -29,7 +29,6 @@ export function button(label,action,cls='',extra=''){return `<button type="butto
 export function external(label,url,cls='link-button'){return `<a class="${cls}" href="${e(url)}" target="_blank" rel="noopener noreferrer">${label}${icon('external')}</a>`;}
 export function field(label,name,value='',type='text',extra=''){return `<label>${label}<input name="${name}" type="${type}" value="${e(value)}" ${extra}></label>`;}
 export function textarea(label,name,value='',extra=''){return `<label>${label}<textarea name="${name}" rows="3" ${extra}>${e(value)}</textarea></label>`;}
-export function select(label,name,options,value){return `<label>${label}<select name="${name}">${options.map(([v,l])=>`<option value="${e(v)}" ${v===value?'selected':''}>${e(l)}</option>`).join('')}</select></label>`;}
 let toastTimer;
 export function toast(message){const box=document.querySelector('#toast');box.textContent=message;box.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>box.classList.remove('visible'),6500);}
 export function errorMessage(error){return error instanceof Error?error.message:'Something went wrong. Your saved data has not been intentionally cleared.';}

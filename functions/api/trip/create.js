@@ -1,11 +1,15 @@
 import {json} from '../../_lib/http.js';
 const MAX_TRIPS=30;
 import {hashToken,randomToken,inviteCode,now,readJSON,badJSON} from '../../_lib/trip.js';
-/** Creates a shared trip from the app itself: no setup token, only a same-origin request. A hard cap on trips bounds abuse. */
+/** Creates a shared trip from the app itself: no setup token, only a same-origin request. The first trip on a fresh
+ * deployment is open; afterwards TRIP_CREATE_OPEN must be set, and a hard cap on trips bounds abuse either way. */
 export async function onRequestPost({request,env}){
  if(!env.DB)return json({error:'Shared trips are not enabled on this deployment.'},503);
  const origin=request.headers.get('Origin');if(origin&&origin!==new URL(request.url).origin)return json({error:'Cross-origin requests are not allowed.'},403);
- const count=await env.DB.prepare('SELECT COUNT(*) AS n FROM trips').first();if((count?.n||0)>=MAX_TRIPS)return json({error:'This deployment has reached its trip limit. Ask the owner to clear old trips.'},503);
+ const count=await env.DB.prepare('SELECT COUNT(*) AS n FROM trips').first(),trips=count?.n||0;
+ if(trips>=MAX_TRIPS)return json({error:'This deployment has reached its trip limit. Ask the owner to clear old trips.'},503);
+ // First-run setup on a fresh deployment is open; after that the owner must open the window deliberately.
+ if(trips>0&&env.TRIP_CREATE_OPEN!=='1')return json({error:'This deployment already has a trip. Ask the owner for an invite, or for a new trip window.'},403);
  const body=await readJSON(request);if(!body)return badJSON();
  const name=String(body.name||'').trim().slice(0,80),salt=String(body.salt||''),member=String(body.memberName||'').trim().slice(0,40);
  if(!name||!/^[A-Za-z0-9+/=]{20,48}$/.test(salt))return json({error:'A trip name and a client-generated salt are required.'},400);

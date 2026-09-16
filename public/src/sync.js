@@ -7,7 +7,7 @@ import {cleanPlace,cleanVote} from './domain.js';
 
 const SHARED_FIELDS=['name','korean','kind','status','neighborhood','address','note','links','lat','lng','date','time','priority','source','checkedAt','media','sharedBy'];
 const VOTE_FIELDS=['placeId','name','vote','at'];
-export const status={busy:false,error:'',pending:0,conflicts:0,lastSyncAt:'',signedOut:false,changedAt:0,runs:0,undecryptable:0};
+export const status={busy:false,error:'',pending:0,conflicts:0,lastSyncAt:'',signedOut:false,changedAt:0,runs:0,undecryptable:0,rejected:0};
 const listeners=new Set();
 export function onChange(cb){listeners.add(cb);return()=>listeners.delete(cb);}
 function emit(){for(const cb of listeners)cb(status);}
@@ -54,10 +54,26 @@ async function adopt(t,k,memberName){
  await db.setMeta('tripKey',k);
  await db.setMeta('trip',{tripId:t.tripId,name:t.name,role:t.role,salt:t.salt,memberToken:t.memberToken,memberName,invite:t.invite||null,cursor:0,lastSyncAt:'',joinedAt:new Date().toISOString(),deviceId:crypto.randomUUID().replace(/-/g,'').slice(0,12)});
  // Everything already on this phone is offered to the group. Photos stay local.
- const all=await db.markAllDirtyForShare();
- for(const p of all){const m=await mutationFor(p,'put');await db.putOutbox({...m,recordId:p.id,rev:p.rev,queuedAt:new Date().toISOString()});}
+ await queuePuts(await db.markAllDirtyForShare());
  status.signedOut=false;status.error='';
  await refreshCounts();
+}
+/** Seals every record first, then writes the whole batch in one outbox transaction. Sealing is a non-IndexedDB await and Safari
+ * auto-commits a live transaction across one, so no seal may happen inside the write. Returns how many entries were queued. */
+export async function queuePuts(records){
+ const entries=[];
+ for(const p of records){const m=await mutationFor(p,'put');if(!m)break;entries.push({...m,recordId:p.id,rev:p.rev,queuedAt:new Date().toISOString()});}
+ await db.putOutboxMany(entries);
+ return entries.length;
+}
+/** Re-queues places that are dirty with nothing in the outbox to carry them. A restore or a join that was interrupted between the
+ * place write and the outbox write leaves records the group can never see, and no later remote change can ever match their ids. */
+async function reconcile(){
+ const [places,outbox]=await Promise.all([db.all(),db.outboxAll()]);
+ const queued=new Set(outbox.map(m=>m.recordId));
+ // A record awaiting a conflict decision is dirty on purpose and its mutation was dropped on purpose, so it is left alone.
+ const orphans=places.filter(p=>p.dirty&&!p.conflict&&!queued.has(p.id));
+ if(orphans.length)await queuePuts(orphans);
 }
 export async function rotateInvite(){
  const t=await trip();if(!t)throw new Error('Not in a shared trip.');
@@ -65,11 +81,12 @@ export async function rotateInvite(){
  await db.setMeta('trip',{...t,invite:r.invite});return r.invite;
 }
 export async function members(){const t=await trip();if(!t)throw new Error('Not in a shared trip.');return api('/api/trip/invite',null,t.memberToken,'GET');}
-export async function leave(){await db.leaveTrip();status.error='';status.signedOut=false;status.undecryptable=0;await refreshCounts();}
+export async function leave(){await db.leaveTrip();status.error='';status.signedOut=false;status.undecryptable=0;status.rejected=0;await refreshCounts();}
 
 export async function refreshCounts(){
  const [o,c,t]=await Promise.all([db.outboxAll(),db.conflictsAll(),trip()]);
- status.pending=o.length;status.conflicts=c.length;status.lastSyncAt=t?.lastSyncAt||'';emit();
+ // Read both skip lists back off the trip record so a relaunch, which iOS forces on this PWA constantly, still reports them.
+ status.pending=o.length;status.conflicts=c.length;status.lastSyncAt=t?.lastSyncAt||'';status.undecryptable=(t?.skippedIds||[]).length;status.rejected=(t?.rejectedIds||[]).length;emit();
 }
 
 let inFlight=null,kickTimer=0;
@@ -83,6 +100,7 @@ async function run(){
  status.busy=true;status.error='';emit();
  try{
   const k=await key();let more=true,guard=0;
+  await reconcile();
   while(more&&guard++<20){
    const current=await trip();if(!current)return;
    const outbox=(await db.outboxAll()).sort((a,b)=>String(a.queuedAt).localeCompare(String(b.queuedAt)));
@@ -90,12 +108,17 @@ async function run(){
    for(const m of outbox){if(seen.has(m.recordId))continue;seen.add(m.recordId);batch.push({mutationId:m.mutationId,recordId:m.recordId,kind:m.kind||'place',op:m.op,baseVersion:m.baseVersion,envelope:m.envelope});if(batch.length===25)break;}
    const r=await api('/api/sync',{protocol:1,since:current.cursor||0,mutations:batch},current.memberToken);
    for(const ack of r.acks||[]){const follow=await db.applyAck(ack);if(follow){const m=await mutationFor(follow.place,'put');m.baseVersion=follow.baseVersion;await db.putOutbox({...m,recordId:follow.recordId,rev:follow.place.rev,queuedAt:new Date().toISOString()});}}
-   for(const c of r.conflicts||[]){let remote=null;if(!c.current.deleted&&c.current.envelope){try{remote=await openShared(c.current.envelope,k,tripAAD(current.tripId,c.recordId));}catch(err){status.error=err.message;}}await db.applyConflict(c,remote);}
+   // The AAD is sealed with the record kind, so a vote envelope opened as a place always fails and the traveler is told the
+   // passphrase is wrong. applyConflict's vote branch ignores remotePlace, so votes skip the decode entirely.
+   for(const c of r.conflicts||[]){let remote=null;const kind=c.kind||(c.recordId.startsWith('v-')?'vote':'place');if(kind==='place'&&!c.current.deleted&&c.current.envelope){try{remote=await openShared(c.current.envelope,k,tripAAD(current.tripId,c.recordId,kind));}catch(err){status.error=err.message;}}await db.applyConflict(c,remote);}
    for(const err of r.errors||[]){await db.dropOutbox(err.mutationId);status.error=err.error||'A change was rejected.';}
-   const decoded=new Map();
-   for(const c of r.changes||[]){if(c.deleted||!c.envelope)continue;try{decoded.set(c.recordId,await openShared(c.envelope,k,tripAAD(current.tripId,c.recordId,c.kind||'place')));}catch(err){status.error=err.message;status.undecryptable++;}}
-   await db.applyChanges(r.changes||[],decoded,r.cursor);
-   if((r.acks||[]).length||(r.conflicts||[]).length||(r.changes||[]).length)status.changedAt=Date.now();
+   const decoded=new Map(),undecryptable=[];
+   for(const c of r.changes||[]){if(c.deleted||!c.envelope)continue;try{decoded.set(c.recordId,await openShared(c.envelope,k,tripAAD(current.tripId,c.recordId,c.kind||'place')));}catch(err){status.error=err.message;undecryptable.push(c.recordId);}}
+   const outcome=await db.applyChanges(r.changes||[],decoded,r.cursor,undecryptable);
+   status.undecryptable=outcome.skipped;status.rejected=outcome.rejected;
+   // An ack only moves serverVersion and dirty, and neither reaches the markup, so re-rendering on one rebuilds identical HTML.
+   // A future per-card "pending" marker must read status.pending rather than put acks back into this condition.
+   if((r.conflicts||[]).length||(r.changes||[]).length)status.changedAt=Date.now();
    more=!!r.hasMore||(await db.outboxAll()).some(m=>!seen.has(m.recordId));
   }
  }catch(err){status.error=err.message;if(err.status===401)status.signedOut=true;}
@@ -131,7 +154,12 @@ export async function hydrateThumbs(){
  try{const t=await trip();if(!t)return;for(const p of await db.placesNeedingThumb()){const photo=await fetchThumb(p.media.thumb||p.media.image,t.memberToken);if(photo&&await db.attachPhoto(p.id,photo))changed=true;}}
  finally{hydrating=false;if(changed){status.changedAt=Date.now();emit();}}
 }
-export const mediaSrc=async path=>{const t=await trip();return t&&path?`${path}?t=${encodeURIComponent(t.memberToken)}`:'';};
+/** Media URLs land in the DOM and in the edge logs of every range request a seek makes, so they carry the member's stored
+ * token_hash rather than the Bearer token itself. The prefix matches hashToken in functions/_lib/trip.js byte for byte,
+ * and the hash is useless as a Bearer because memberFromRequest hashes whatever it is handed. */
+const hex=b=>[...b].map(x=>x.toString(16).padStart(2,'0')).join('');
+const mediaTicket=async token=>hex(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('seoul-pocket:member:'+token))));
+export const mediaSrc=async path=>{const t=await trip();return t&&path?`${path}?t=${await mediaTicket(t.memberToken)}`:'';};
 export async function castVote(place,vote){
  let t=await trip();if(!t)throw new Error('Votes need a shared trip.');
  if(!t.deviceId){t={...t,deviceId:crypto.randomUUID().replace(/-/g,'').slice(0,12)};await db.setMeta('trip',t);}

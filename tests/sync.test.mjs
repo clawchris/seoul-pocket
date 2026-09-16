@@ -101,7 +101,10 @@ test('votes are their own record kind and come back with their kind in the chang
 
 test('unfurl and media proxy need membership and the fetcher, and never expose the fetcher secret or origin',async()=>{
  const {onRequestPost:unfurl}=await import('../functions/api/unfurl.js');const {onRequestGet:media}=await import('../functions/api/media/[[path]].js');
+ const {onRequest:middleware}=await import('../functions/_middleware.js');const {hashToken}=await import('../functions/_lib/trip.js');
  const {env,guest}=await setup();
+ // The phone sends a media ticket, the member's stored token_hash, so a value that leaks from the DOM or a request log cannot write.
+ const ticket=await hashToken(guest.memberToken);
  assert.equal((await unfurl({request:post('/api/unfurl',{url:'https://www.instagram.com/reel/x/'}),env})).status,401);
  assert.equal((await unfurl({request:post('/api/unfurl',{url:'https://www.instagram.com/reel/x/'},guest.memberToken),env})).status,503);
  const env2={...env,FETCH_ORIGIN:'https://fetcher.example',FETCH_SECRET:'s'.repeat(40)};const old=globalThis.fetch;let seen;
@@ -109,9 +112,134 @@ test('unfurl and media proxy need membership and the fetcher, and never expose t
  try{const r=await unfurl({request:post('/api/unfurl',{url:'https://www.instagram.com/reel/x/?igsh=1'},guest.memberToken),env:env2}),b=await r.json();
   assert.equal(r.status,200);assert.equal(seen.u,'https://fetcher.example/unfurl');assert.equal(seen.h['X-Fetch-Secret'],'s'.repeat(40));assert.equal(b.thumb,'/api/media/563715fe5105464386d7/thumb.jpg');assert.equal(b.video,'/api/media/563715fe5105464386d7/video.mp4');assert.equal(JSON.stringify(b).includes('fetcher.example'),false);
   globalThis.fetch=async(u,o)=>{seen={u:String(u),h:o.headers};return new Response('abc',{status:206,headers:{'Content-Type':'video/mp4','Content-Range':'bytes 0-2/10','Content-Length':'3'}});};
-  const mr=await media({request:new Request('https://trip.example/api/media/563715fe5105464386d7/video.mp4?t='+guest.memberToken,{headers:{Range:'bytes=0-2'}}),env:env2,params:{path:['563715fe5105464386d7','video.mp4']}});
-  assert.equal(mr.status,206);assert.equal(seen.h.Range,'bytes=0-2');assert.equal(mr.headers.get('Content-Range'),'bytes 0-2/10');assert.match(mr.headers.get('Cache-Control'),/private/);
+  // Through onRequest, because Cloudflare runs the middleware over every Function response and it used to replace this header with no-store.
+  const mreq=new Request('https://trip.example/api/media/563715fe5105464386d7/video.mp4?t='+ticket,{headers:{Range:'bytes=0-2'}});
+  const mr=await middleware({request:mreq,env:env2,next:()=>media({request:mreq,env:env2,params:{path:['563715fe5105464386d7','video.mp4']}})});
+  assert.equal(mr.status,206);assert.equal(seen.h.Range,'bytes=0-2');assert.equal(mr.headers.get('Content-Range'),'bytes 0-2/10');assert.equal(mr.headers.get('Cache-Control'),'private, max-age=31536000, immutable');
   assert.equal((await media({request:new Request('https://trip.example/api/media/563715fe5105464386d7/video.mp4'),env:env2,params:{path:['563715fe5105464386d7','video.mp4']}})).status,401);
-  assert.equal((await media({request:new Request('https://trip.example/api/media/x/../etc?t='+guest.memberToken),env:env2,params:{path:['x','..']}})).status,404);
+  assert.equal((await media({request:new Request('https://trip.example/api/media/x/../etc?t='+ticket),env:env2,params:{path:['x','..']}})).status,404);
+  // The ticket only reads media. It is not a general credential, so it cannot write to the shared trip.
+  assert.equal((await send(env2,ticket,{})).status,401);
+  assert.equal((await send(env2,guest.memberToken,{})).status,200);
  }finally{globalThis.fetch=old;}
+});
+
+test('unfurl forwards only allowlisted hosts and answers in its own words, never the fetcher\'s',async()=>{
+ const {onRequestPost:unfurl}=await import('../functions/api/unfurl.js');
+ const {env,guest}=await setup();
+ const env2={...env,FETCH_ORIGIN:'https://fetcher.example',FETCH_SECRET:'s'.repeat(40)};
+ const old=globalThis.fetch;let calls=0;
+ globalThis.fetch=async()=>{calls++;return Response.json({id:'a'.repeat(20),provider:'tiktok',url:'https://www.tiktok.com/@u/video/1'});};
+ const ask=async url=>{const r=await unfurl({request:post('/api/unfurl',{url},guest.memberToken),env:env2});return {status:r.status,body:await r.json()};};
+ try{
+  for(const url of ['https://tiktok.com/@u/video/1','https://www.tiktok.com/@u/video/1','https://m.blog.naver.com/someone/1','https://youtu.be/abcdefgh'])assert.equal((await ask(url)).status,200,url);
+  assert.equal(calls,4,'the bare host and a subdomain of it both reach the fetcher');
+  // A host that merely ends with an allowed name is somebody else's site. The pattern anchors both ends for exactly this.
+  for(const url of ['https://example.com/x','https://eviltiktok.com/@u/video/1','https://tiktok.com.attacker.test/@u/video/1','https://notyoutu.be/abcdefgh','https://naver.com.evil.test/x']){
+   const r=await ask(url);assert.equal(r.status,400,url);assert.equal(r.body.error,'That site is not supported. Paste a TikTok, Instagram, YouTube, Naver or X link.',url);}
+  // Userinfo and an explicit port are how a link gets read as one host and fetched as another, so both are refused before the allowlist runs.
+  for(const url of ['https://user:pw@tiktok.com/x','https://tiktok.com:8443/@u/video/1']){
+   const r=await ask(url);assert.equal(r.status,400,url);assert.equal(r.body.error,'Paste a full https link.',url);}
+  assert.equal(calls,4,'a refused host never reaches the fetcher at all');
+  globalThis.fetch=async()=>new Response('yt-dlp died: /home/openclaw/fetcher.py:88 cookies.txt unreadable',{status:500});
+  const failed=await ask('https://www.tiktok.com/@u/video/1');
+  assert.equal(failed.status,502);
+  assert.equal(failed.body.error,'The link could not be read.','the traveler reads the module\'s own line, not the fetcher\'s stderr');
+  assert.equal(/yt-dlp|openclaw|cookies/.test(JSON.stringify(failed.body)),false,'upstream text must never be relayed to the browser');
+  globalThis.fetch=async()=>new Response('unsupported url: private account',{status:400});
+  const rejected=await ask('https://www.instagram.com/reel/x/');
+  assert.equal(rejected.status,400);assert.equal(rejected.body.error,'The link could not be read.');
+ }finally{globalThis.fetch=old;}
+});
+
+test('trip creation is open for the first trip, shut after it, and reopened only by the exact flag',async()=>{
+ const env={API_ACCESS_TOKEN:token,DB:migrated()};
+ const body={name:'Seoul',salt,memberName:'Chris'};
+ // No credential check guards this route, so the gate is all that stands between a public URL and unbounded trip creation.
+ assert.equal((await create({request:post('/api/trip/create',body),env})).status,201,'first-run setup on a fresh deployment is open');
+ const closed=await create({request:post('/api/trip/create',body),env});
+ assert.equal(closed.status,403,'with a trip already present and TRIP_CREATE_OPEN unset, a second trip must be refused');
+ assert.match((await closed.json()).error,/already has a trip/);
+ assert.equal((await create({request:post('/api/trip/create',body),env:{...env,TRIP_CREATE_OPEN:'1'}})).status,201);
+ assert.equal((await create({request:post('/api/trip/create',body),env:{...env,TRIP_CREATE_OPEN:'true'}})).status,403,'only the literal 1 opens the window');
+ assert.equal((await create({request:post('/api/trip/create',body),env:{...env,TRIP_CREATE_OPEN:1}})).status,403);
+ assert.equal((await env.DB.prepare('SELECT COUNT(*) AS n FROM trips').first()).n,2);
+});
+
+test('a change page stops on the byte budget, and its cursor fetches the rest whole',async()=>{
+ const {env,owner,guest}=await setup();
+ // 64 KB is the envelope ceiling and 512 KB is the page budget, so eight of these fill a page with 192 rows of headroom left.
+ const envelope='v1.a.'+'x'.repeat(65531);
+ assert.equal(envelope.length,64*1024);
+ const rec=n=>'rec-'+String(n).padStart(8,'0');
+ const wrote=await send(env,owner.memberToken,{mutations:Array.from({length:12},(_,i)=>({mutationId:'m'+String(i).padStart(9,'0'),recordId:rec(i),kind:'place',op:'put',baseVersion:0,envelope}))});
+ assert.equal(wrote.body.acks.length,12);
+ const first=await send(env,guest.memberToken,{since:0});
+ assert.equal(first.body.changes.length,8,'the page is cut by bytes, not by the 200-row cap');
+ assert.ok(first.body.changes.reduce((n,c)=>n+c.envelope.length,0)<=512*1024);
+ assert.equal(first.body.hasMore,true);
+ assert.equal(first.body.cursor,first.body.changes[7].sequence);
+ const second=await send(env,guest.memberToken,{since:first.body.cursor});
+ assert.equal(second.body.changes.length,4);
+ assert.equal(second.body.hasMore,false);
+ const ids=[...first.body.changes,...second.body.changes].map(c=>c.recordId);
+ assert.equal(new Set(ids).size,12,'no record is delivered twice across the two pages');
+ assert.deepEqual(ids.slice().sort(),Array.from({length:12},(_,i)=>rec(i)).sort(),'and none is lost between them');
+});
+
+test('a conflict names its own record kind, on both conflict shapes',async()=>{
+ const {env,owner,guest}=await setup();
+ const place='rec-11111111',vote='v-place1-dev1abcd';
+ await send(env,owner.memberToken,{mutations:[
+  {mutationId:'m1-aaaaaaaa',recordId:place,kind:'place',op:'put',baseVersion:0,envelope:'v1.a.b'},
+  {mutationId:'m2-aaaaaaaa',recordId:vote,kind:'vote',op:'put',baseVersion:0,envelope:'v1.c.d'}]});
+ const stale=await send(env,guest.memberToken,{mutations:[
+  {mutationId:'m3-bbbbbbbb',recordId:place,kind:'place',op:'put',baseVersion:0,envelope:'v1.e.f'},
+  {mutationId:'m4-bbbbbbbb',recordId:vote,kind:'vote',op:'put',baseVersion:0,envelope:'v1.g.h'}]});
+ assert.equal(stale.body.conflicts.length,2);
+ const by=new Map(stale.body.conflicts.map(c=>[c.recordId,c]));
+ assert.equal(by.get(place).kind,'place');
+ assert.equal(by.get(vote).kind,'vote','public/src/sync.js keys its decode on c.kind and skips votes; a vote envelope opened as a place fails AAD and tells the traveler the passphrase is wrong');
+ // The other shape: the compare-and-swap loses to a writer that landed between the read and the write.
+ const {env:raw,guest:other}=await setup();
+ const real=raw.DB,swallow=sql=>sql.startsWith('INSERT INTO records');
+ const raced={...real,prepare:sql=>{const st=real.prepare(sql);return swallow(sql)?{...st,bind:(...a)=>({...st.bind(...a),run:async()=>({meta:{changes:0}})})}:st;}};
+ const lost=await send({...raw,DB:raced},other.memberToken,{mutations:[{mutationId:'m5-cccccccc',recordId:'v-place2-dev2abcd',kind:'vote',op:'put',baseVersion:0,envelope:'v1.i.j'}]});
+ assert.equal(lost.body.conflicts.length,1);
+ assert.equal(lost.body.conflicts[0].kind,'vote','the compare-and-swap conflict carries the kind too, or the client guesses from the record id prefix');
+});
+
+// A receipt held back for one batch at the end is lost for every mutation in the request when that batch dies, so a phone
+// with 25 queued edits comes back to 25 conflicts on records nobody else touched. These two pin the window at one mutation.
+const kindOf=s=>s.includes('INTO changes')?'change':s.includes('INTO mutation_receipts')?'receipt':'other';
+function tapped(DB,seen){
+ const w=(st,sql)=>({first:async()=>{seen.push(kindOf(sql));return st.first();},run:async()=>{seen.push(kindOf(sql));return st.run();},all:async()=>{seen.push(kindOf(sql));return st.all();},__raw:st,__sql:sql});
+ return {...DB,prepare:sql=>{const s=DB.prepare(sql);return {...w(s,sql),bind:(...a)=>w(s.bind(...a),sql)};},
+  batch:async list=>{seen.push(list.map(s=>kindOf(s.__sql)).join('+'));return DB.batch(list.map(s=>s.__raw));}};
+}
+const puts=n=>Array.from({length:n},(_,i)=>({mutationId:'mut-'+String(i).padStart(8,'0'),recordId:'rec-'+String(i).padStart(8,'0'),kind:'place',op:'put',baseVersion:0,envelope:'v1.aa.bb'}));
+
+test('a receipt write that dies costs one mutation, not the whole request',async()=>{
+ const {env,owner}=await setup();
+ const real=env.DB,boom=()=>{throw new Error('worker died');};
+ const dead={...real,prepare:sql=>{const s=real.prepare(sql);return sql.includes('mutation_receipts')?{...s,bind:(...a)=>({...s.bind(...a),run:boom})}:s;},batch:async list=>{for(const s of list)await s.run();return [];}};
+ await assert.rejects(send({...env,DB:dead},owner.memberToken,{mutations:puts(3)}),/worker died/);
+ const count=async t=>(await real.prepare('SELECT COUNT(*) AS n FROM '+t).first()).n;
+ assert.equal(await count('records'),1,'the request stops at the first applied mutation instead of writing all three');
+ assert.equal(await count('changes'),1);
+ assert.equal(await count('mutation_receipts'),0);
+ const retry=await send(env,owner.memberToken,{mutations:puts(3)});
+ assert.equal(retry.body.acks.length,2,'the two that never ran apply on the retry');
+ assert.equal(retry.body.conflicts.length,1,'only the one that landed without a receipt conflicts');
+});
+
+test('an applied mutation costs two D1 round trips, its change row and its receipt in one batch',async()=>{
+ const one=[],three=[];
+ const a=await setup(),r1=await send({...a.env,DB:tapped(a.env.DB,one)},a.owner.memberToken,{mutations:puts(1)});
+ const b=await setup(),r3=await send({...b.env,DB:tapped(b.env.DB,three)},b.owner.memberToken,{mutations:puts(3)});
+ assert.equal(r1.body.acks.length,1);assert.equal(r3.body.acks.length,3);
+ assert.deepEqual(one.filter(s=>s.includes('+')),['change+receipt']);
+ assert.deepEqual(three.filter(s=>s.includes('+')),['change+receipt','change+receipt','change+receipt']);
+ assert.equal(three.filter(s=>s==='receipt').length,0,'no applied receipt is left for a tail batch');
+ assert.equal(three.length-one.length,4,'two extra applied mutations cost exactly two round trips each');
 });

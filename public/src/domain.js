@@ -46,6 +46,15 @@ export function cleanPlace(raw, id = raw.id) {
   const time = text(raw.time,5); if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Use a valid time.');
   return {id, name, korean:text(raw.korean,140), kind:KINDS.includes(raw.kind)?raw.kind:'place', neighborhood:text(raw.neighborhood,100), address:text(raw.address,350), note:text(raw.note,3000), links:sourceLinks.filter(Boolean).slice(0,8).map(safeURL), status:STATUSES.includes(raw.status)?raw.status:'saved', priority:!!raw.priority, date, time, lat, lng, photoId:text(raw.photoId,90), source:text(raw.source,200), checkedAt:validDate(raw.checkedAt)?raw.checkedAt:'', rev:Number.isSafeInteger(raw.rev)&&raw.rev>=0?raw.rev:0, updatedAt:text(raw.updatedAt,40), serverVersion:Number.isSafeInteger(raw.serverVersion)&&raw.serverVersion>=0?raw.serverVersion:0, dirty:!!raw.dirty, conflict:!!raw.conflict, media:cleanMedia(raw.media), sharedBy:text(raw.sharedBy,40)};
 }
+/** Which fields survive editing an existing find. The form owns the text the traveler typed; the record keeps its own photo,
+ * its origin, the social post attached to it and the name of whoever shared it. Editing a find that arrived from a shared link
+ * previously dropped media and sharedBy and broadcast that loss to every phone in the trip.
+ * `prior` is the stored place or undefined for a new one, `values` is the submitted form as plain strings, and the result is
+ * the object to hand to cleanPlace. */
+export function mergeEditedPlace(prior, values, options = {}) {
+  const {id = '', priority = false, newPhotoId = '', removePhoto = false, formSource = ''} = options;
+  return {...values, id: id || prior?.id || '', priority: !!priority, photoId: newPhotoId || (removePhoto ? '' : prior?.photoId || ''), source: prior?.source || formSource || '', serverVersion: prior?.serverVersion || 0, media: prior?.media || null, sharedBy: prior?.sharedBy || ''};
+}
 export function parseAmount(value) {
   const s=String(value).trim().replaceAll(',','');
   if (!/^\d+(\.\d{0,4})?$/.test(s)) throw new Error('Enter a positive number, using a decimal point.');

@@ -3,3 +3,6 @@
 API_ACCESS_TOKEN=REPLACE_WITH_RANDOM_64_HEX_CHARACTERS
 # Kakao Developers > My Application > App > Platform Key > REST API key. Enable Kakao Map in Usage settings.
 KAKAO_REST_API_KEY=
+# Leave unset. /api/trip/create refuses a second trip once one exists, and only the literal string 1 reopens it.
+# 'true' and a numeric 1 both stay closed. Set it to 1, create the trip, then unset it again.
+TRIP_CREATE_OPEN=

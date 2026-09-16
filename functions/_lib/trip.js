@@ -14,5 +14,13 @@ export async function memberFromRequest(request,env){
  if(!member||member.revoked_at)return json({error:'This device is no longer a member of the shared trip.'},401);
  return {member};
 }
+/** Media tickets. The phone sends the member's stored token_hash, which is an indexed lookup here and is not a Bearer anywhere. */
+export async function memberFromMediaTicket(ticket,env){
+ if(!env.DB)return json({error:'Shared trips are not enabled on this deployment.'},503);
+ if(!/^[a-f0-9]{64}$/.test(String(ticket||'')))return json({error:'This device is no longer a member of the shared trip.'},401);
+ const member=await env.DB.prepare('SELECT id,trip_id,role FROM members WHERE token_hash=? AND revoked_at IS NULL').bind(ticket).first();
+ if(!member)return json({error:'This device is no longer a member of the shared trip.'},401);
+ return {member};
+}
 export function badJSON(){return json({error:'Send a JSON body.'},400);}
 export async function readJSON(request,limit=256*1024){const text=await request.text();if(text.length>limit)return null;try{return JSON.parse(text);}catch{return null;}}

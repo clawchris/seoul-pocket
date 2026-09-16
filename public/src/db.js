@@ -14,6 +14,8 @@ export function database(){
 }
 export async function all(store='places'){const d=await database();return request(d.transaction(store).objectStore(store).getAll());}
 export async function getMeta(id){const d=await database();return (await request(d.transaction('meta').objectStore('meta').get(id)))?.value;}
+/** One transaction for every meta key. A screen refresh reads seven named keys plus one per checklist item; separately that is 26 transactions. */
+export async function metaAll(){const d=await database();const rows=await request(d.transaction('meta').objectStore('meta').getAll());return new Map(rows.map(r=>[r.id,r.value]));}
 export async function setMeta(id,value){const d=await database(),tx=d.transaction('meta','readwrite'),done=complete(tx);tx.objectStore('meta').put({id,value});await done;announce();}
 /** Atomic first-use insert. Never overwrites an existing vault, including one from another tab. */
 export async function setMetaIfAbsent(id,value){const d=await database(),tx=d.transaction('meta','readwrite'),done=complete(tx),store=tx.objectStore('meta'),existing=await request(store.get(id));if(!existing)store.put({id,value});await done;if(!existing)announce();return !existing;}
@@ -33,8 +35,11 @@ export async function deletePlace(id,expectedRev,mutation=null){
  const d=await database(),tx=d.transaction(['places','photos','outbox','conflicts'],'readwrite'),done=complete(tx),s=tx.objectStore('places'),p=await request(s.get(id));
  if(!p||p.rev!==expectedRev){tx.abort();await done.catch(()=>{});throw new Error('This item changed. Reopen it before deleting.');}
  s.delete(id);if(p.photoId)tx.objectStore('photos').delete(p.photoId);tx.objectStore('conflicts').delete(id);
- const ob=tx.objectStore('outbox');for(const m of await request(ob.getAll()))if(m.recordId===id)ob.delete(m.mutationId);
- if(mutation&&(p.serverVersion||0)>0)ob.put({...mutation,recordId:id,rev:p.rev,queuedAt:new Date().toISOString()});
+ // A create whose response was lost leaves serverVersion 0 while the server already holds the record, so a queued-but-unacked
+ // create is also grounds for queuing the delete. Without it the server keeps pushing the record back forever.
+ const ob=tx.objectStore('outbox');let hadPending=false;
+ for(const m of await request(ob.getAll()))if(m.recordId===id){hadPending=true;ob.delete(m.mutationId);}
+ if(mutation&&((p.serverVersion||0)>0||hadPending))ob.put({...mutation,recordId:id,rev:p.rev,queuedAt:new Date().toISOString()});
  await done;announce();
 }
 export async function snapshot(){const d=await database(),tx=d.transaction(['places','meta','photos'],'readonly'),done=complete(tx);const [places,meta,photos]=await Promise.all(['places','meta','photos'].map(s=>request(tx.objectStore(s).getAll())));await done;return {schema:SCHEMA,exportedAt:new Date().toISOString(),places,meta,photos};}
@@ -48,10 +53,14 @@ export function validateSnapshot(s){
 }
 /** Restores as new copies. Never overwrites existing places or an existing stay vault. */
 export async function restoreCopies(s){
- validateSnapshot(s);const d=await database(),tx=d.transaction(['places','photos','meta'],'readwrite'),done=complete(tx);
- const meta=tx.objectStore('meta'),currentStay=await request(meta.get('stay')),mapping=new Map();
+ validateSnapshot(s);const d=await database();
+ // The trip is read before the write transaction opens. Sealing an envelope is a non-IndexedDB await and Safari auto-commits a
+ // live transaction across one, so the caller queues the outbox entries from the returned copies after this resolves.
+ const shared=!!((await request(d.transaction('meta').objectStore('meta').get('trip')))?.value);
+ const tx=d.transaction(['places','photos','meta'],'readwrite'),done=complete(tx);
+ const meta=tx.objectStore('meta'),currentStay=await request(meta.get('stay')),mapping=new Map(),copies=[];
  for(const p of s.photos){const id=crypto.randomUUID();mapping.set(p.id,id);tx.objectStore('photos').put({...p,id});}
- for(const p of s.places){const copy=cleanPlace({...p,id:crypto.randomUUID(),photoId:mapping.get(p.photoId)||'',rev:1,updatedAt:new Date().toISOString(),serverVersion:0,dirty:false});tx.objectStore('places').put(copy);}
+ for(const p of s.places){const copy=cleanPlace({...p,id:crypto.randomUUID(),photoId:mapping.get(p.photoId)||'',rev:1,updatedAt:new Date().toISOString(),serverVersion:0,dirty:shared});tx.objectStore('places').put(copy);copies.push(copy);}
  const stay=s.meta.find(m=>m.id==='stay');if(stay&&!currentStay)meta.put(stay);
  // Restore only general preparation confirmations that are missing on the destination.
  // Device-specific tests are never imported as complete on a different phone.
@@ -59,7 +68,7 @@ export async function restoreCopies(s){
  const existingPrep=await Promise.all(prep.map(m=>request(meta.get(m.id))));
  prep.forEach((m,i)=>{if(!existingPrep[i])meta.put({id:m.id,value:m.value});});
  // Existing preferences/rates remain untouched; weather is not restored as current.
- await done;announce();return {count:s.places.length,stayImported:!!stay&&!currentStay,staySkipped:!!stay&&!!currentStay};
+ await done;announce();return {count:s.places.length,copies,stayImported:!!stay&&!currentStay,staySkipped:!!stay&&!!currentStay};
 }
 const channel=typeof window!=='undefined'&&typeof BroadcastChannel!=='undefined'?new BroadcastChannel('seoul-pocket-updates'):null;
 function announce(){channel?.postMessage('changed');}
@@ -83,34 +92,67 @@ export async function applyAck(ack){
 export async function applyConflict(conflict,remotePlace){
  const d=await database(),tx=d.transaction(['places','outbox','conflicts','votes'],'readwrite'),done=complete(tx),places=tx.objectStore('places');
  if(conflict.recordId.startsWith('v-')){const ob=tx.objectStore('outbox'),m=await request(ob.get(conflict.mutationId));ob.delete(conflict.mutationId);if(m&&!conflict.current.deleted){ob.put({...m,mutationId:crypto.randomUUID(),baseVersion:conflict.current.version});}const v=await request(tx.objectStore('votes').get(conflict.recordId));if(v){v.serverVersion=conflict.current.version;tx.objectStore('votes').put(v);}await done;return;}
- tx.objectStore('outbox').delete(conflict.mutationId);const p=await request(places.get(conflict.recordId));
- if(p){p.conflict=true;places.put(p);tx.objectStore('conflicts').put({id:conflict.recordId,version:conflict.current.version,deleted:!!conflict.current.deleted,remote:remotePlace,seenAt:new Date().toISOString()});}
- else if(!conflict.current.deleted&&remotePlace){places.put(cleanPlace({...remotePlace,id:conflict.recordId,photoId:'',rev:1,updatedAt:new Date().toISOString(),serverVersion:conflict.current.version,dirty:false}));}
+ const ob=tx.objectStore('outbox'),losing=await request(ob.get(conflict.mutationId));ob.delete(conflict.mutationId);
+ const p=await request(places.get(conflict.recordId)),at=new Date().toISOString();
+ if(p){p.conflict=true;places.put(p);tx.objectStore('conflicts').put({id:conflict.recordId,version:conflict.current.version,deleted:!!conflict.current.deleted,remote:remotePlace,seenAt:at});}
+ else if(losing?.op==='delete'&&!conflict.current.deleted&&remotePlace){
+  // A local delete lost the race, so the shared copy comes back and waits for a decision instead of vanishing.
+  // dirty:true is bookkeeping, not a claim that the content differs. applyChanges keys its do-not-overwrite path on p.dirty,
+  // so dirty:false would let a later remote change write conflict:false while the conflicts row survives and the counter sticks.
+  places.put(cleanPlace({...remotePlace,id:conflict.recordId,photoId:'',rev:1,updatedAt:at,serverVersion:conflict.current.version,dirty:true,conflict:true}));
+  tx.objectStore('conflicts').put({id:conflict.recordId,version:conflict.current.version,deleted:false,remote:remotePlace,mine:'delete',seenAt:at});
+ }
+ else if(!conflict.current.deleted&&remotePlace){places.put(cleanPlace({...remotePlace,id:conflict.recordId,photoId:'',rev:1,updatedAt:at,serverVersion:conflict.current.version,dirty:false}));}
  await done;announce();
 }
 /** Applies a page of remote changes. Clean local records follow the server; dirty ones become conflicts instead of being overwritten. */
-export async function applyChanges(changes,decoded,cursor){
+export async function applyChanges(changes,decoded,cursor,undecryptable=[]){
  const d=await database(),tx=d.transaction(['places','conflicts','meta','photos','votes'],'readwrite'),done=complete(tx),places=tx.objectStore('places'),conflicts=tx.objectStore('conflicts'),meta=tx.objectStore('meta'),votes=tx.objectStore('votes');
+ // A record the server sends that this phone cannot decrypt or cannot clean is skipped, never thrown out of here. The cursor
+ // write below sits after the loop, so one bad record would wedge every future page of incoming sync.
+ // The two failures stay in separate lists all the way to the screen. A record that decrypted and then failed cleanPlace or
+ // cleanVote says nothing about the group passphrase, and counting it as undecryptable tells a working phone to leave the trip.
+ const skipped=new Set(undecryptable),rejected=new Set(),applied=new Set();
  for(const c of changes){
   const remote=decoded.get(c.recordId);
-  if(c.kind==='vote'){if(c.deleted)votes.delete(c.recordId);else if(remote){try{votes.put(cleanVote({...remote,id:c.recordId,serverVersion:c.version}));}catch{}}continue;}
+  if(c.kind==='vote'){if(c.deleted){votes.delete(c.recordId);applied.add(c.recordId);}else if(remote){try{votes.put(cleanVote({...remote,id:c.recordId,serverVersion:c.version}));applied.add(c.recordId);}catch{rejected.add(c.recordId);}}continue;}
   const p=await request(places.get(c.recordId));
   if(p&&(p.serverVersion||0)>=c.version)continue;
-  if(p&&p.dirty){if(!p.conflict){p.conflict=true;places.put(p);}conflicts.put({id:c.recordId,version:c.version,deleted:c.deleted,remote:remote||null,seenAt:new Date().toISOString()});continue;}
-  if(c.deleted){if(p){places.delete(p.id);if(p.photoId)tx.objectStore('photos').delete(p.photoId);}conflicts.delete(c.recordId);continue;}
+  // A lost delete waiting for a decision carries mine:'delete' on its conflicts row. A later remote change must carry that marker
+  // across: without it resolveConflict rebuilds the record on both buttons and the traveler can never finish the delete.
+  if(p&&p.dirty){if(!p.conflict){p.conflict=true;places.put(p);}const held=await request(conflicts.get(c.recordId)),row={id:c.recordId,version:c.version,deleted:c.deleted,remote:remote||null,seenAt:new Date().toISOString()};if(held?.mine)row.mine=held.mine;conflicts.put(row);applied.add(c.recordId);continue;}
+  if(c.deleted){if(p){places.delete(p.id);if(p.photoId)tx.objectStore('photos').delete(p.photoId);}conflicts.delete(c.recordId);applied.add(c.recordId);continue;}
   if(!remote)continue;
-  places.put(cleanPlace({...remote,id:c.recordId,photoId:p?.photoId||'',rev:(p?.rev||0)+1,updatedAt:new Date().toISOString(),serverVersion:c.version,dirty:false,conflict:false}));conflicts.delete(c.recordId);
+  try{places.put(cleanPlace({...remote,id:c.recordId,photoId:p?.photoId||'',rev:(p?.rev||0)+1,updatedAt:new Date().toISOString(),serverVersion:c.version,dirty:false,conflict:false}));conflicts.delete(c.recordId);applied.add(c.recordId);}
+  catch{rejected.add(c.recordId);}
  }
- const trip=(await request(meta.get('trip')))?.value;if(trip){trip.cursor=Math.max(trip.cursor||0,cursor);trip.lastSyncAt=new Date().toISOString();meta.put({id:'trip',value:trip});}
- await done;announce();
+ let skippedIds=[],rejectedIds=[];
+ const trip=(await request(meta.get('trip')))?.value;
+ if(trip){
+  trip.cursor=Math.max(trip.cursor||0,cursor);trip.lastSyncAt=new Date().toISOString();
+  // The cursor is persisted and the skip is not, so a skipped record would otherwise be lost silently at the next launch.
+  // A record moves between the two lists when its failure changes, so each loop clears the id from the list it no longer belongs to.
+  const list=new Set(trip.skippedIds||[]),bad=new Set(trip.rejectedIds||[]);
+  for(const id of applied){list.delete(id);bad.delete(id);}
+  for(const id of skipped){list.add(id);bad.delete(id);}
+  for(const id of rejected){bad.add(id);list.delete(id);}
+  trip.skippedIds=skippedIds=[...list].slice(0,200);trip.rejectedIds=rejectedIds=[...bad].slice(0,200);meta.put({id:'trip',value:trip});
+ }
+ await done;announce();return {rejected:rejectedIds.length,skipped:skippedIds.length};
 }
 /** Conflict resolution. keepMine re-queues the local copy on top of the server version; useShared adopts the remote copy. */
 export async function resolveConflict(id,choice,mutation){
  const d=await database(),tx=d.transaction(['places','conflicts','outbox'],'readwrite'),done=complete(tx),places=tx.objectStore('places'),conflicts=tx.objectStore('conflicts');
  const c=await request(conflicts.get(id)),p=await request(places.get(id));conflicts.delete(id);
  if(!c){await done;return;}
- if(choice==='mine'&&p){p.conflict=false;p.dirty=true;p.serverVersion=c.version;p.rev+=1;p.updatedAt=new Date().toISOString();places.put(p);if(mutation)tx.objectStore('outbox').put({...mutation,recordId:id,rev:p.rev,baseVersion:c.version,queuedAt:p.updatedAt});}
- else if(choice==='shared'){if(c.deleted){if(p)places.delete(id);}else if(c.remote)places.put(cleanPlace({...c.remote,id,photoId:p?.photoId||'',rev:(p?.rev||0)+1,updatedAt:new Date().toISOString(),serverVersion:c.version,dirty:false,conflict:false}));}
+ // Keeping mine on a lost delete means deleting again on top of the newer server version, not re-uploading what the traveler removed.
+ let acted=false;
+ if(choice==='mine'&&p&&c.mine==='delete'){places.delete(id);if(mutation&&mutation.op==='delete')tx.objectStore('outbox').put({...mutation,recordId:id,rev:p.rev,baseVersion:c.version,queuedAt:new Date().toISOString()});acted=true;}
+ else if(choice==='mine'&&p){p.conflict=false;p.dirty=true;p.serverVersion=c.version;p.rev+=1;p.updatedAt=new Date().toISOString();places.put(p);if(mutation)tx.objectStore('outbox').put({...mutation,recordId:id,rev:p.rev,baseVersion:c.version,queuedAt:p.updatedAt});acted=true;}
+ else if(choice==='shared'){if(c.deleted){if(p)places.delete(id);acted=true;}else if(c.remote){places.put(cleanPlace({...c.remote,id,photoId:p?.photoId||'',rev:(p?.rev||0)+1,updatedAt:new Date().toISOString(),serverVersion:c.version,dirty:false,conflict:false}));acted=true;}}
+ // A decision always clears the badge. A conflict whose remote copy never decrypted has nothing to adopt, so the local copy stays
+ // and the flag clears; leaving it set strands the find on "Needs a decision" with its conflicts row already deleted.
+ if(!acted&&p&&p.conflict){p.conflict=false;places.put(p);}
  await done;announce();
 }
 export async function leaveTrip(){
@@ -122,6 +164,14 @@ export async function leaveTrip(){
 export async function markAllDirtyForShare(){
  const d=await database(),tx=d.transaction(['places'],'readwrite'),done=complete(tx),places=tx.objectStore('places');
  const all=await request(places.getAll());for(const p of all){p.serverVersion=0;p.dirty=true;places.put(p);}await done;return all;
+}
+/** Queues many outbox entries in one transaction with one getAll, so a large restore is not one full outbox scan per record. */
+export async function putOutboxMany(list){
+ if(!list.length)return;
+ const d=await database(),tx=d.transaction('outbox','readwrite'),done=complete(tx),ob=tx.objectStore('outbox'),ids=new Set(list.map(m=>m.recordId));
+ for(const o of await request(ob.getAll()))if(ids.has(o.recordId))ob.delete(o.mutationId);
+ for(const m of list)ob.put(m);
+ await done;
 }
 export async function putOutbox(m){const d=await database(),tx=d.transaction('outbox','readwrite'),done=complete(tx),ob=tx.objectStore('outbox');for(const o of await request(ob.getAll()))if(o.recordId===m.recordId)ob.delete(o.mutationId);ob.put(m);await done;}
 export async function dropOutbox(mutationId){const d=await database(),tx=d.transaction('outbox','readwrite'),done=complete(tx);tx.objectStore('outbox').delete(mutationId);await done;}
