@@ -63,7 +63,8 @@ test('trip-guide content is well formed and cannot collide with other saved idea
  for(const f of g.FOODS)assert.ok(f.name&&f.korean&&f.note,f.id);
  assert.equal(new Set(g.DAY_PLANS.map(d=>d.id)).size,g.DAY_PLANS.length);
  assert.equal(g.GUIDE_DATES.start,'2026-09-28');assert.equal(g.GUIDE_DATES.end,'2026-10-05');
- assert.ok(g.INTERESTS.filter(p=>p.tier==='A').length>=8);
+ // Was 8 until 2026-09-20, when Square Enix Store Seoul came out: Korean place search returns nothing for it.
+ assert.ok(g.INTERESTS.filter(p=>p.tier==='A').length>=7);
  assert.ok(g.SEARCH_NAMES.every(n=>n.en&&n.ko));
 });
 

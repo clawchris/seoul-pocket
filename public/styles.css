@@ -63,3 +63,4 @@ label{display:grid;gap:6px;font-size:13px;font-weight:650;margin:0 0 16px}input,
 .media-block{margin:0 0 12px}.media-video{display:block;width:100%;max-height:70vh;border-radius:16px;background:#000}.media-empty{display:grid;place-items:center;color:var(--muted)}.vote-row{margin:12px 0}
 
 .share-box{padding:14px 14px 10px;margin:0 0 14px}.share-form{display:flex;gap:8px;align-items:stretch}.share-form input{flex:1;min-width:0;margin:0}.share-form button{flex:none;padding-left:18px;padding-right:18px}.share-box .form-error:empty{display:none}.share-box .caption{margin:8px 0 0}
+.card.has-photo{padding-top:0;overflow:hidden}.guide-photo{display:block;width:calc(100% + 42px);margin:0 -21px 15px;aspect-ratio:4/3;max-height:190px;object-fit:cover;background:#e8eddf}.guide-address{font-size:13px;font-weight:650;margin:9px 0 2px;overflow-wrap:anywhere}.spot{border-top:1px solid var(--line);padding-top:12px}.spot strong{font-size:15px;overflow-wrap:anywhere}

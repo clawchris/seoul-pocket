@@ -10,7 +10,8 @@ const hash=createHash('sha256');hash.update(await readFile(new URL(import.meta.u
 const version=hash.digest('hex').slice(0,16),assets=paths.map(p=>'/'+path.relative(out,p).split(path.sep).join('/')).map(p=>p==='/index.html'?'/':p);
 // Recorded audio is 60% of the install and the app works without it: audio.js falls back to speechSynthesis and the phrase card
 // still renders the written Korean. One dropped file on Korean mobile data must not cost the traveler the whole offline app.
-const optional=assets.filter(p=>p.endsWith('.m4a')),core=assets.filter(p=>!p.endsWith('.m4a'));
+const spare=p=>p.endsWith('.m4a')||p.startsWith('/img/guide/');
+const optional=assets.filter(spare),core=assets.filter(p=>!spare(p));
 // Cloudflare Pages answers /index.html with a 308 to /. A cached redirected response cannot satisfy a navigation
 // request (Chrome fails it with ERR_FAILED), so the shell is cached under '/' and stored without its redirect flag.
 const script=`/* Generated from actual file contents. Only first-party assets, including the encrypted address seed. No live API responses. */
