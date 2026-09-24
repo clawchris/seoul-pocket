@@ -152,6 +152,35 @@ test('unfurl forwards only allowlisted hosts and answers in its own words, never
  }finally{globalThis.fetch=old;}
 });
 
+test('a failed link says whether the post is gone or the app is broken, and still never relays the fetcher text',async()=>{
+ const {onRequestPost:unfurl}=await import('../functions/api/unfurl.js');
+ const {env,guest}=await setup();
+ const env2={...env,FETCH_ORIGIN:'https://fetcher.example',FETCH_SECRET:'s'.repeat(40)};
+ const old=globalThis.fetch;
+ const answer=(status,body)=>{globalThis.fetch=async()=>Response.json(body,{status});};
+ const ask=async url=>{const r=await unfurl({request:post('/api/unfurl',{url},guest.memberToken),env:env2});return {status:r.status,body:await r.json()};};
+ const raw='ERROR: [Instagram] x: HTTP Error 400 --cookies /home/openclaw/operations-runtime/.secrets/instagram-cookies.txt';
+ try{
+  // A deleted post is the traveler's answer, so the message names the site and tells them nothing on our side is wrong.
+  answer(422,{code:'gone',error:raw});
+  const gone=await ask('https://www.instagram.com/reel/x/');
+  assert.equal(gone.status,404);assert.equal(gone.body.error,'This post was removed or is private on Instagram.');
+  assert.equal(/yt-dlp|openclaw|cookies|HTTP Error/.test(JSON.stringify(gone.body)),false);
+  const tt=await ask('https://www.tiktok.com/@u/video/1');
+  assert.equal(tt.body.error,'This post was removed or is private on TikTok.');
+  // A live post the server cannot open means the Instagram sign-in or the downloader broke, which only the owner can fix.
+  answer(503,{code:'broken',error:raw});
+  const broken=await ask('https://www.instagram.com/reel/x/');
+  assert.equal(broken.status,502);assert.equal(broken.body.error,'Seoul Pocket cannot open Instagram posts right now. Tell Chris, the post itself is fine.');
+  assert.equal(/openclaw|cookies/.test(JSON.stringify(broken.body)),false);
+  // An unknown code, or a fetcher from before codes existed, falls back to the plain line instead of guessing.
+  answer(502,{code:'something-new',error:raw});
+  assert.equal((await ask('https://www.instagram.com/reel/x/')).body.error,'The link could not be read.');
+  answer(502,{error:raw});
+  assert.equal((await ask('https://www.instagram.com/reel/x/')).body.error,'The link could not be read.');
+ }finally{globalThis.fetch=old;}
+});
+
 test('trip creation is open for the first trip, shut after it, and reopened only by the exact flag',async()=>{
  const env={API_ACCESS_TOKEN:token,DB:migrated()};
  const body={name:'Seoul',salt,memberName:'Chris'};

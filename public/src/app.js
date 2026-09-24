@@ -302,7 +302,7 @@ function mediaBlock(p){
  const m=p.media;if(!m)return '';
  const online=navigator.onLine&&state.trip;
  const player=m.kind==='video'&&m.video&&online?`<video class="media-video" controls playsinline preload="metadata" ${p.photoId?`data-poster="${e(p.photoId)}"`:''} data-media-src="${e(m.video)}"></video>`:p.photoId?`<div class="detail-image" data-photo="${e(p.photoId)}"></div>`:`<div class="detail-image media-empty">${icon('photo')}</div>`;
- return `<div class="media-block">${player}<p class="caption">${m.kind==='video'&&!online?'Video plays when online. ':''}${e(m.provider||'link')}${m.author?' · '+e(m.author):''}${p.sharedBy?' · shared by '+e(p.sharedBy):''}${m.url?' · '+external('Open original',m.url):''}</p></div>`;
+ return `<div class="media-block">${player}<p class="caption">${m.kind==='video'&&m.video&&!online?'Video plays when online. ':''}${m.kind==='video'&&!m.video?'Open the original to watch the video. ':''}${e(m.provider||'link')}${m.author?' · '+e(m.author):''}${p.sharedBy?' · shared by '+e(p.sharedBy):''}${m.url?' · '+external('Open original',m.url):''}</p></div>`;
 }
 function voteRow(p){
  if(!state.trip)return '';const v=votesFor(p.id);
